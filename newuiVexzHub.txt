@@ -300,7 +300,7 @@ local function click(parent, text, icon, callback, hasDesc, desc)
     end
 
     local s = stroke(f, Theme.text, 2, 0.65)
-    local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), ZIndex = 10, Parent = f})
+    local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), ZIndex = 50, Parent = f})
 
     btn.MouseEnter:Connect(function()
         tw(f, {BackgroundTransparency = 0.4}, 0.3)
@@ -993,7 +993,7 @@ function AuzuraLib:Window(cfg)
             Font = Theme.fontBold,
             TextSize = 13,
             Text = "",
-            ZIndex = 5,
+            ZIndex = 50,
             Parent = searchBoxFrame,
         })
 
@@ -1429,7 +1429,7 @@ function AuzuraLib:Window(cfg)
             gradient3(colorFrame, 0.482699, 48)
 
             local value = c.Value or false
-            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), ZIndex = 10, Parent = f})
+            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), ZIndex = 50, Parent = f})
 
             local function refresh(animated)
                 if value then
@@ -1484,7 +1484,7 @@ function AuzuraLib:Window(cfg)
             }
         end
 
-        -- Slider (ĐÃ FIX LOGIC)
+        -- Slider
         function Tab:Slider(c)
             c = c or {}
             local f = newCard(c.Side, 65, "Slider")
@@ -1569,7 +1569,7 @@ function AuzuraLib:Window(cfg)
             gradient3(circle, 0.482699)
 
             local dragging = false
-            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), ZIndex = 10, Parent = f})
+            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), ZIndex = 50, Parent = f})
 
             local function updateFromMouse()
                 local mouse = UIS:GetMouseLocation()
@@ -1634,7 +1634,6 @@ function AuzuraLib:Window(cfg)
             local f, btn, titleLbl, fire = click(col, c.Title, c.Icon, c.Callback, hasDesc, c.Desc)
             counter = counter + 1
             f.LayoutOrder = counter
-            wireHighlight(f, btn)
 
             local cnt = #col:GetChildren()
             badgeLabel.Text = tostring(cnt)
@@ -1954,7 +1953,7 @@ function AuzuraLib:Window(cfg)
                 Size = UDim2.new(1, 0, 1, 0),
                 BorderSizePixel = 0,
                 AutoButtonColor = false,
-                ZIndex = 10,
+                ZIndex = 50,
                 Parent = f,
             })
 
@@ -2104,7 +2103,7 @@ function AuzuraLib:Window(cfg)
                 TextSize = 13,
                 ClearTextOnFocus = c.ClearOnFocus ~= false,
                 TextScaled = true,
-                ZIndex = 10,
+                ZIndex = 50,
                 Parent = inputFrame,
             })
 
@@ -2221,7 +2220,7 @@ function AuzuraLib:Window(cfg)
                 Size = UDim2.new(0, 70, 0, 20),
                 Text = "",
                 AutoButtonColor = false,
-                ZIndex = 10,
+                ZIndex = 50,
                 Parent = f,
             })
             corner(modeBtn, 6)
@@ -2256,7 +2255,7 @@ function AuzuraLib:Window(cfg)
                 BackgroundTransparency = 1,
                 Text = "",
                 Size = UDim2.new(1, 0, 1, 0),
-                ZIndex = 10,
+                ZIndex = 50,
                 Parent = f,
             })
 
@@ -2351,7 +2350,7 @@ function AuzuraLib:Window(cfg)
                 Parent = f,
             })
 
-            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), ZIndex = 10, Parent = f})
+            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), ZIndex = 50, Parent = f})
             btn.MouseEnter:Connect(function() tw(f, {BackgroundTransparency = 0.4}, 0.3) end)
             btn.MouseLeave:Connect(function() tw(f, {BackgroundTransparency = 0}, 0.3) end)
             btn.MouseButton1Click:Connect(function()
@@ -2459,7 +2458,7 @@ function AuzuraLib:Window(cfg)
                 end)
             end
 
-            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), ZIndex = 10, Parent = f})
+            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), ZIndex = 50, Parent = f})
             btn.MouseButton1Click:Connect(function()
                 EffectClick(bg)
                 openFullscreen()
