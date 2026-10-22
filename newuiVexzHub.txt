@@ -32,6 +32,9 @@ local Theme = {
     red1 = Color3.fromRGB(255, 89, 89),
     red2 = Color3.fromRGB(255, 0, 0),
     red3 = Color3.fromRGB(85, 0, 0),
+    toggleBg = Color3.fromRGB(30, 30, 35),
+    toggleOff = Color3.fromRGB(30, 30, 35),
+    sliderBg = Color3.fromRGB(40, 40, 45),
     fontBold = Enum.Font.GothamBold,
     fontReg = Enum.Font.Gotham,
     fontBlack = Enum.Font.GothamBlack,
@@ -46,7 +49,7 @@ local function mk(class, props, parent)
     return o
 end
 
--- corner helper (ĐÃ FIX)
+-- corner
 local function corner(p, r)
     if type(r) == "number" then
         r = UDim.new(0, r)
@@ -56,7 +59,7 @@ local function corner(p, r)
     return mk("UICorner", {CornerRadius = r}, p)
 end
 
--- stroke helper
+-- stroke
 local function stroke(p, color, thickness, transparency)
     return mk("UIStroke", {
         Color = color or Theme.border,
@@ -65,7 +68,7 @@ local function stroke(p, color, thickness, transparency)
     }, p)
 end
 
--- gradient3 helper
+-- gradient 3 keypoints
 local function gradient3(p, mid, rot, transparencies)
     local g = mk("UIGradient", {
         Color = ColorSequence.new({
@@ -84,7 +87,7 @@ local function gradient3(p, mid, rot, transparencies)
     return g
 end
 
--- gradientCustom helper
+-- gradient custom keypoints
 local function gradientCustom(p, points, rot, transparencies)
     local g = mk("UIGradient", {
         Color = ColorSequence.new(points),
@@ -99,7 +102,7 @@ local function gradientCustom(p, points, rot, transparencies)
     return g
 end
 
--- tw helper
+-- tween helper
 local function tw(obj, goals, duration, style, direction)
     local t = TweenService:Create(obj,
         TweenInfo.new(duration or 0.3, style or Enum.EasingStyle.Quad, direction or Enum.EasingDirection.Out),
@@ -118,11 +121,14 @@ end
 
 -- calc text height
 local function calcTextHeight(text, textSize, font, maxWidth)
-    local size = TextService:GetTextSize(text, textSize, font, Vector2.new(maxWidth, 10000))
-    return size.Y
+    local ok, size = pcall(function()
+        return TextService:GetTextSize(text, textSize, font, Vector2.new(maxWidth, 10000))
+    end)
+    if ok and size then return size.Y end
+    return 15
 end
 
--- global gui ref
+-- global gui
 local _gui = nil
 
 -- GetIcon closure
@@ -249,7 +255,7 @@ end
 
 -- click closure
 local function click(parent, text, icon, callback, hasDesc, desc)
-    local h = hasDesc and 55 or 35
+    local h = (hasDesc or icon) and 55 or 35
     local f = mk("Frame", {
         BackgroundColor3 = Theme.text,
         BackgroundTransparency = 0,
@@ -294,7 +300,7 @@ local function click(parent, text, icon, callback, hasDesc, desc)
     end
 
     local s = stroke(f, Theme.text, 2, 0.65)
-    local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), Parent = f})
+    local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), ZIndex = 5, Parent = f})
 
     btn.MouseEnter:Connect(function()
         tw(f, {BackgroundTransparency = 0.4}, 0.3)
@@ -343,17 +349,15 @@ function AuzuraLib:Window(cfg)
         BackgroundColor3 = Theme.bg,
         BackgroundTransparency = 0.1,
         Size = UDim2.new(0, 0, 0, 0),
-        Position = UDim2.new(0.5, -windowSize.X.Offset / 2, 0.5, -windowSize.Y.Offset / 2),
+        Position = UDim2.new(0.5, -1, 0.5, -14),
+        AnchorPoint = Vector2.new(0.5, 0.5),
         BorderSizePixel = 0,
-        Visible = true,
+        Visible = false,
         ClipsDescendants = true,
         Parent = gui,
     })
     corner(bg, 20)
     stroke(bg, Color3.fromRGB(80, 80, 100), 2.5, 0.6)
-
-    -- bounce in
-    tw(bg, {Size = windowSize}, 1, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out)
 
     -- drop shadow
     mk("ImageLabel", {
@@ -363,7 +367,7 @@ function AuzuraLib:Window(cfg)
         Position = UDim2.new(0.5, 0, 0.5, 0),
         Size = UDim2.new(1, 160, 1, 160),
         Image = "rbxassetid://8992230677",
-        ImageColor3 = Color3.new(0, 0, 0),
+        ImageColor3 = Color3.fromRGB(0, 0, 0),
         ImageTransparency = 0.15,
         ScaleType = Enum.ScaleType.Slice,
         SliceCenter = Rect.new(99, 99, 99, 99),
@@ -371,7 +375,7 @@ function AuzuraLib:Window(cfg)
         Parent = bg,
     })
 
-    -- effect bg
+    -- effect background image
     mk("ImageLabel", {
         Name = "Effect",
         BackgroundTransparency = 1,
@@ -386,7 +390,7 @@ function AuzuraLib:Window(cfg)
         Parent = bg,
     })
 
-    -- resize handle
+    -- resize handle (bottom-right)
     local resizeHandle = mk("Frame", {
         Name = "ResizeHandle",
         BackgroundColor3 = Theme.border,
@@ -469,68 +473,88 @@ function AuzuraLib:Window(cfg)
         end
     end)
 
-    -- title tile
+    -- header layout container
+    local headerList = mk("UIListLayout", {
+        Padding = UDim.new(0, 7),
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        VerticalAlignment = Enum.VerticalAlignment.Center,
+        Parent = header,
+    })
+    local headerPadding = mk("UIPadding", {
+        PaddingLeft = UDim.new(0, 20),
+        PaddingTop = UDim.new(0, 5),
+        Parent = header,
+    })
+
+    -- icon tile frame (450x22)
     local iconTile = mk("Frame", {
         Name = "IconTileFrame",
         BackgroundTransparency = 1,
         Size = UDim2.new(0, 450, 0, 22),
-        Position = UDim2.new(0, 16, 0, 12),
+        LayoutOrder = 1,
         Parent = header,
     })
+
     if cfg.IconTile then
         mk("ImageLabel", {
             Name = "IconTileImage",
             BackgroundTransparency = 1,
+            AnchorPoint = Vector2.new(0, 0.5),
+            Position = UDim2.new(0, 0, 0.5, 0),
+            Size = UDim2.new(0, 22, 0, 22),
             Image = "rbxassetid://" .. tostring(cfg.IconTile),
             ImageColor3 = Theme.accent,
-            Size = UDim2.new(0, 22, 0, 22),
             Parent = iconTile,
         })
     end
+
     mk("TextLabel", {
         Name = "TitleWithIcon",
         BackgroundTransparency = 1,
+        Position = UDim2.new(0, 28, 0, 0),
+        Size = UDim2.new(1, -28, 1, 0),
         Text = cfg.Title or "Auzura UI",
         TextColor3 = Theme.text,
         TextXAlignment = Enum.TextXAlignment.Left,
         Font = Theme.fontBold,
         TextSize = 18,
-        Size = UDim2.new(1, -28, 1, 0),
-        Position = UDim2.new(0, 28, 0, 0),
+        TextScaled = false,
         Parent = iconTile,
     })
 
+    -- gradient line
     local hLine = mk("Frame", {
         Name = "Line",
         BackgroundColor3 = Theme.text,
         Size = UDim2.new(0, 80, 0, 3),
-        Position = UDim2.new(0, 16, 0, 42),
         BorderSizePixel = 0,
+        LayoutOrder = 2,
         Parent = header,
     })
     corner(hLine, 2)
     gradient3(hLine, 0.482699)
 
+    -- desc
     mk("TextLabel", {
         Name = "Desc",
         BackgroundTransparency = 1,
+        Size = UDim2.new(0, 220, 0, 6),
         Text = cfg.Desc or "",
         TextColor3 = Theme.text,
         TextTransparency = 0.35,
         TextXAlignment = Enum.TextXAlignment.Left,
         Font = Theme.fontBold,
         TextSize = 12,
-        Size = UDim2.new(0, 260, 0, 16),
-        Position = UDim2.new(0, 100, 0, 42),
+        LayoutOrder = 3,
         Parent = header,
     })
 
-    -- close button
+    -- close / open button
     local closeBtn = mk("TextButton", {
         Name = "CloseUI",
         BackgroundColor3 = Color3.fromRGB(20, 20, 25),
         BackgroundTransparency = 0.15,
-        AnchorPoint = Vector2.new(0, 1),
+        AnchorPoint = Vector2.new(0, 0),
         Position = UDim2.new(0.06, 0, 0.21, 0),
         Size = UDim2.new(0, 55, 0, 55),
         Text = "",
@@ -556,11 +580,22 @@ function AuzuraLib:Window(cfg)
         Parent = closeBtn,
     })
 
+    local firstOpen = true
     closeBtn.MouseButton1Click:Connect(function()
         tw(closeTxt, {TextTransparency = 1}, 0.15)
         task.wait(0.15)
-        bg.Visible = not bg.Visible
-        closeTxt.Text = bg.Visible and "Close" or "Open"
+        if bg.Visible then
+            bg.Visible = false
+            closeTxt.Text = "Open"
+        else
+            bg.Visible = true
+            closeTxt.Text = "Close"
+            if firstOpen then
+                bg.Size = UDim2.new(0, 0, 0, 0)
+                tw(bg, {Size = windowSize}, 1, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out)
+                firstOpen = false
+            end
+        end
         tw(closeTxt, {TextTransparency = 0}, 0.15)
     end)
 
@@ -568,20 +603,21 @@ function AuzuraLib:Window(cfg)
     local tabBar = mk("ScrollingFrame", {
         Name = "Tab",
         BackgroundTransparency = 1,
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        Position = UDim2.new(0.5, 0, 0.58, 0),
-        Size = UDim2.new(0.96, 0, 0.73, 0),
+        AnchorPoint = Vector2.new(0.5, 0),
+        Position = UDim2.new(0.5, 0, 0, 75), -- Đã sửa: Đưa lên ngay dưới Header
+        Size = UDim2.new(0.96, 0, 1, -85), -- Đã sửa: Tự động co giãn theo viền dưới
         CanvasSize = UDim2.new(0, 0, 0, 0),
         AutomaticCanvasSize = Enum.AutomaticSize.Y,
-        ScrollBarThickness = 0,
+        ScrollBarThickness = 4,
         ScrollBarImageColor3 = Color3.fromRGB(100, 100, 130),
         ScrollBarImageTransparency = 0.5,
         Parent = bg,
     })
     local tabGrid = mk("UIGridLayout", {
-        CellSize = UDim2.new(0.23, 0, 0, 110),
+        CellSize = UDim2.new(0.31, 0, 0, 110),
         CellPadding = UDim2.new(0, 12, 0, 12),
         SortOrder = Enum.SortOrder.LayoutOrder,
+        HorizontalAlignment = Enum.HorizontalAlignment.Center, -- Đã sửa: Căn giữa các tab
         Parent = tabBar,
     })
 
@@ -589,14 +625,14 @@ function AuzuraLib:Window(cfg)
     local pagesContainer = mk("Frame", {
         Name = "Pages",
         BackgroundTransparency = 1,
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        Position = UDim2.new(0.5, 0, 0.58, 0),
-        Size = UDim2.new(0.97, 0, 0.73, 0),
+        AnchorPoint = Vector2.new(0.5, 0),
+        Position = UDim2.new(0.5, 0, 0, 75), -- Đã sửa
+        Size = UDim2.new(0.97, 0, 1, -85), -- Đã sửa
         Visible = false,
         Parent = bg,
     })
 
-    -- back button
+    -- return button
     local returnFrame = mk("Frame", {
         Name = "Return",
         BackgroundColor3 = Theme.text,
@@ -617,10 +653,11 @@ function AuzuraLib:Window(cfg)
     stroke(returnFrame, Color3.fromRGB(255, 85, 127), 2.5, 0)
 
     mk("ImageLabel", {
+        Name = "ImageLabel",
         BackgroundTransparency = 1,
         AnchorPoint = Vector2.new(0.5, 0.5),
         Position = UDim2.new(0.5, 0, 0.5, 0),
-        Size = UDim2.new(1, 50, 1, 0),
+        Size = UDim2.new(1, 0, 1, 0),
         Image = "rbxassetid://87782680483863",
         ImageTransparency = 0.75,
         ScaleType = Enum.ScaleType.Crop,
@@ -628,6 +665,7 @@ function AuzuraLib:Window(cfg)
     })
 
     mk("TextLabel", {
+        Name = "TextLabel",
         AnchorPoint = Vector2.new(0.5, 0.5),
         Position = UDim2.new(0.5, 0, 0.5, 0),
         Size = UDim2.new(1, 0, 1, 0),
@@ -640,13 +678,14 @@ function AuzuraLib:Window(cfg)
     })
 
     local retBtn = mk("TextButton", {
+        Name = "Click",
         BackgroundTransparency = 1,
         Text = "",
         Size = UDim2.new(1, 0, 1, 0),
         Parent = returnFrame,
     })
 
-    -- tabs state
+    -- state
     local tabs = {}
     local currentTabIdx = nil
 
@@ -676,6 +715,7 @@ function AuzuraLib:Window(cfg)
             tw(t.cardStroke, {Transparency = 0.75}, 0.3)
             tw(t.hname, {TextStrokeTransparency = 0.3}, 0.3)
             if t.banner then tw(t.banner, {Size = UDim2.new(1, 0, 1, 0)}, 0.3) end
+            if t.icon then tw(t.icon, {Size = UDim2.new(0, 32, 0, 32)}, 0.3) end
         end
     end
     retBtn.MouseButton1Click:Connect(function()
@@ -689,6 +729,11 @@ function AuzuraLib:Window(cfg)
         if input.KeyCode == Enum.KeyCode.F2 then
             bg.Visible = not bg.Visible
             closeTxt.Text = bg.Visible and "Close" or "Open"
+            if bg.Visible and firstOpen then
+                bg.Size = UDim2.new(0, 0, 0, 0)
+                tw(bg, {Size = windowSize}, 1, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out)
+                firstOpen = false
+            end
         end
     end)
 
@@ -743,12 +788,11 @@ function AuzuraLib:Window(cfg)
         local idx = #tabs + 1
         local numCols = math.clamp(tabCfg.Columns or 2, 1, 4)
 
-        -- tab card
+        -- tab card — Size controlled by GridLayout
         local card = mk("Frame", {
             Name = "TabCard",
             BackgroundColor3 = Theme.card,
             BackgroundTransparency = 0.2,
-            Size = UDim2.new(0, 155, 0, 200),
             BorderSizePixel = 0,
             ClipsDescendants = true,
             LayoutOrder = idx,
@@ -757,6 +801,7 @@ function AuzuraLib:Window(cfg)
         corner(card, 16)
         local cardStroke = stroke(card, Color3.fromRGB(120, 120, 150), 2, 0.75)
 
+        -- banner
         local banner = nil
         if tabCfg.Banner then
             banner = mk("ImageLabel", {
@@ -772,6 +817,7 @@ function AuzuraLib:Window(cfg)
             corner(banner, 16)
         end
 
+        -- overlay
         local overlay = mk("Frame", {
             Name = "Overlay",
             BackgroundColor3 = Color3.new(0, 0, 0),
@@ -784,6 +830,7 @@ function AuzuraLib:Window(cfg)
         corner(overlay, 16)
         gradient3(overlay, 0.5, 50, {0.7, 0.9})
 
+        -- badge
         local badge = mk("Frame", {
             Name = "BadgeFrame",
             BackgroundColor3 = Theme.text,
@@ -791,7 +838,6 @@ function AuzuraLib:Window(cfg)
             Position = UDim2.new(1, -8, 0, 8),
             Size = UDim2.new(0, 32, 0, 18),
             ZIndex = 6,
-            BorderSizePixel = 0, -- Fixed typo from BorderPixelSize
             Parent = card,
         })
         corner(badge, UDim.new(1, 0))
@@ -815,57 +861,62 @@ function AuzuraLib:Window(cfg)
             Parent = badge,
         })
 
+        -- icon
         local tabIcon = nil
         if tabCfg.Icon then
             tabIcon = mk("ImageLabel", {
                 Name = "Icon",
                 BackgroundTransparency = 1,
+                AnchorPoint = Vector2.new(0, 0.5),
+                Position = UDim2.new(0, 8, 0.5, 0),
+                Size = UDim2.new(0, 32, 0, 32),
                 Image = "rbxassetid://" .. tostring(tabCfg.Icon),
                 ImageColor3 = Theme.accent,
-                Size = UDim2.new(0, 32, 0, 32),
-                Position = UDim2.new(0, 8, 0.5, -40),
                 ZIndex = 5,
                 Parent = card,
             })
         end
 
+        -- hub name (top-right of icon)
         local hname = mk("TextLabel", {
             Name = "HubName",
             BackgroundTransparency = 1,
-            AnchorPoint = Vector2.new(0.5, 1),
-            Position = UDim2.new(0.5, 0, 0.92, 0),
-            Size = UDim2.new(0.85, 0, 0, 24),
+            AnchorPoint = Vector2.new(0, 0.5),
+            Position = UDim2.new(0, 45, 0.5, -15),
+            Size = UDim2.new(0.65, 0, 0, 18),
             Text = tabCfg.Title or "Tab",
             TextColor3 = Theme.text,
             Font = Theme.fontBold,
             TextSize = 14,
+            TextXAlignment = Enum.TextXAlignment.Left,
             TextScaled = true,
             TextWrapped = true,
-            TextXAlignment = Enum.TextXAlignment.Center,
             TextStrokeTransparency = 0.3,
             ZIndex = 5,
             Parent = card,
         })
         mk("UITextSizeConstraint", {MaxTextSize = 14, MinTextSize = 10, Parent = hname})
 
+        -- title (below hub name)
         mk("TextLabel", {
             Name = "Title",
             BackgroundTransparency = 1,
-            AnchorPoint = Vector2.new(0.5, 1),
-            Position = UDim2.new(0.5, 0, 0.92, 0),
-            Size = UDim2.new(0.85, 0, 0, 18),
+            AnchorPoint = Vector2.new(0, 0.5),
+            Position = UDim2.new(0, 45, 0.5, 5),
+            Size = UDim2.new(0.65, 0, 0, 18),
             Text = tabCfg.Desc or "",
             TextColor3 = Theme.text,
             TextTransparency = 0.35,
             Font = Theme.fontReg,
             TextSize = 11,
+            TextXAlignment = Enum.TextXAlignment.Left,
             TextScaled = true,
             TextWrapped = true,
-            TextXAlignment = Enum.TextXAlignment.Center,
             ZIndex = 5,
             Parent = card,
         })
 
+        -- click overlay
         local tabClick = mk("TextButton", {
             Name = "Click",
             BackgroundTransparency = 1,
@@ -877,14 +928,14 @@ function AuzuraLib:Window(cfg)
 
         -- page
         local page = mk("Frame", {
-            Name = "Page",
+            Name = "Pages",
             BackgroundTransparency = 1,
             Size = UDim2.new(1, 0, 1, 0),
             Visible = false,
             Parent = pagesContainer,
         })
 
-        -- search
+        -- search frame
         local searchFrame = mk("Frame", {
             Name = "SearchFrame",
             BackgroundColor3 = Theme.search,
@@ -922,11 +973,19 @@ function AuzuraLib:Window(cfg)
             Parent = searchFrame,
         })
 
+        local searchBoxFrame = mk("Frame", {
+            Name = "SearchBoxFrame",
+            BackgroundTransparency = 1,
+            AnchorPoint = Vector2.new(0, 0.5),
+            Position = UDim2.new(0, 42, 0.5, 0),
+            Size = UDim2.new(1, -52, 1, -6),
+            Parent = searchFrame,
+        })
+
         local searchBox = mk("TextBox", {
             Name = "SearchBox",
             BackgroundTransparency = 1,
-            Position = UDim2.new(0, 42, 0, 3),
-            Size = UDim2.new(1, -52, 1, -6),
+            Size = UDim2.new(1, 0, 1, 0),
             PlaceholderText = "Search elements...",
             PlaceholderColor3 = Theme.textMuted,
             TextColor3 = Theme.text,
@@ -934,7 +993,7 @@ function AuzuraLib:Window(cfg)
             Font = Theme.fontBold,
             TextSize = 13,
             Text = "",
-            Parent = searchFrame,
+            Parent = searchBoxFrame,
         })
 
         local underline = mk("Frame", {
@@ -977,7 +1036,7 @@ function AuzuraLib:Window(cfg)
             tw(searchFrame, {BackgroundTransparency = 0.25}, 0.4)
         end)
 
-        -- content
+        -- content frame
         local content = mk("Frame", {
             Name = "ContentFrame",
             BackgroundTransparency = 1,
@@ -995,11 +1054,19 @@ function AuzuraLib:Window(cfg)
             Parent = content,
         })
 
+        -- columns
         local columns = {}
-        local colWidth = 480 / numCols
         local colNames = {"Single", "Left", "Center", "Right"}
+        local colWidth = numCols == 1 and 480 or 240
+        if numCols == 1 then
+            colNames = {"Single"}
+        elseif numCols == 2 then
+            colNames = {"Left", "Right"}
+        elseif numCols == 3 then
+            colNames = {"Left", "Center", "Right"}
+        end
         for i = 1, numCols do
-            local name = numCols == 1 and "Single" or (numCols == 2 and (i == 1 and "Left" or "Right") or colNames[i])
+            local name = colNames[i]
             local s = mk("ScrollingFrame", {
                 Name = name,
                 Active = true,
@@ -1062,7 +1129,7 @@ function AuzuraLib:Window(cfg)
             tw(returnFrame, {Position = UDim2.new(0.86, 0, 0.055, 0)}, 0.3, Enum.EasingStyle.Back)
         end)
 
-        -- tab hover 5 tweens
+        -- tab hover (5 tweens)
         tabClick.MouseEnter:Connect(function()
             if currentTabIdx ~= idx then
                 tw(card, {BackgroundTransparency = 0.05}, 0.3)
@@ -1092,6 +1159,7 @@ function AuzuraLib:Window(cfg)
             badgeLabel = badgeLabel,
             banner = banner,
             hname = hname,
+            icon = tabIcon,
         }
         recomputeGrid()
 
@@ -1099,20 +1167,18 @@ function AuzuraLib:Window(cfg)
         local Tab = {Window = Window}
         local counter = 0
 
-        -- get column
         local function getCol(side)
             if numCols == 1 then return columns["Single"] end
             if numCols == 2 then
                 return side == "b" and columns["Right"] or columns["Left"]
             end
-            local idx2 = (side == "b") and 2 or 1
-            local names = {}
-            for n in pairs(columns) do table.insert(names, n) end
-            table.sort(names)
-            return columns[names[math.clamp(idx2, 1, #names)]] or columns[names[1]]
+            if numCols == 3 then
+                if side == "b" then return columns["Right"] end
+                return columns["Left"]
+            end
+            return columns[colNames[1]]
         end
 
-        -- new card with highlight + badge pop
         local function newCard(side, h, name, noHighlight)
             counter = counter + 1
             local col = getCol(side)
@@ -1129,16 +1195,16 @@ function AuzuraLib:Window(cfg)
             corner(f, 10)
 
             if not noHighlight then
-                mk("Frame", {
+                local hf = mk("Frame", {
                     Name = "HighlightFrame",
                     BackgroundColor3 = Theme.text,
                     BackgroundTransparency = 1,
                     Size = UDim2.new(1, 0, 1, 0),
-                    ZIndex = 2,
+                    ZIndex = 1, -- Sửa ZIndex
                     BorderSizePixel = 0,
                     Parent = f,
                 })
-                corner(f:GetChildren()[#f:GetChildren()], 10)
+                corner(hf, 10)
             end
 
             local cnt = #col:GetChildren()
@@ -1149,13 +1215,16 @@ function AuzuraLib:Window(cfg)
             return f, col
         end
 
-        -- wire highlight hover
         local function wireHighlight(f)
             local hf = f:FindFirstChild("HighlightFrame")
             if not hf then return end
             local btn = mk("TextButton", {
-                Name = "HoverZone", BackgroundTransparency = 1,
-                Text = "", Size = UDim2.new(1, 0, 1, 0), ZIndex = 1, Parent = f,
+                Name = "HoverZone",
+                BackgroundTransparency = 1,
+                Text = "",
+                Size = UDim2.new(1, 0, 1, 0),
+                ZIndex = 2, -- Sửa ZIndex
+                Parent = f,
             })
             btn.MouseEnter:Connect(function() tw(hf, {BackgroundTransparency = 0.95}, 0.3) end)
             btn.MouseLeave:Connect(function() tw(hf, {BackgroundTransparency = 1}, 0.3) end)
@@ -1164,13 +1233,14 @@ function AuzuraLib:Window(cfg)
         -- Label
         function Tab:Label(c)
             c = c or {}
-            local f = newCard(c.Side, 35, "Label")
             local hasIcon = c.Icon ~= nil
+            local f = newCard(c.Side, 35, "Label")
             local textX = hasIcon and 48 or 12
 
             if hasIcon then
                 local iconFrame = lak(f, c.Icon, 24)
-                iconFrame.Position = UDim2.new(0, 8, 0.5, -12)
+                iconFrame.AnchorPoint = Vector2.new(0, 0.5)
+                iconFrame.Position = UDim2.new(0, 8, 0.5, 0)
             end
 
             local lbl = mk("TextLabel", {
@@ -1265,14 +1335,15 @@ function AuzuraLib:Window(cfg)
         -- Toggle
         function Tab:Toggle(c)
             c = c or {}
-            local f = newCard(c.Side, 55, "Toggle")
             local statusType = c.StatusTextType or "OnOff"
             local hasIcon = c.Icon ~= nil
+            local f = newCard(c.Side, 55, "Toggle")
             local textX = hasIcon and 48 or 12
 
             if hasIcon then
                 local iconFrame = lak(f, c.Icon, 24)
-                iconFrame.Position = UDim2.new(0, 8, 0.5, -12)
+                iconFrame.AnchorPoint = Vector2.new(0, 0.5)
+                iconFrame.Position = UDim2.new(0, 8, 0.5, 0)
             end
 
             mk("TextLabel", {
@@ -1326,7 +1397,7 @@ function AuzuraLib:Window(cfg)
 
             local check = mk("Frame", {
                 Name = "Check",
-                BackgroundColor3 = Color3.fromRGB(30, 30, 35),
+                BackgroundColor3 = Theme.toggleBg,
                 AnchorPoint = Vector2.new(1, 0.5),
                 Position = UDim2.new(0.95, 0, 0.5, 0),
                 Size = UDim2.new(0, 25, 0, 25),
@@ -1350,7 +1421,7 @@ function AuzuraLib:Window(cfg)
             gradient3(colorFrame, 0.482699, 48)
 
             local value = c.Value or false
-            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), Parent = f})
+            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), ZIndex = 5, Parent = f})
 
             local function refresh(animated)
                 if value then
@@ -1458,7 +1529,7 @@ function AuzuraLib:Window(cfg)
 
             local bar = mk("Frame", {
                 Name = "SliderBar",
-                BackgroundColor3 = Color3.fromRGB(40, 40, 45),
+                BackgroundColor3 = Theme.sliderBg,
                 AnchorPoint = Vector2.new(0.5, 1),
                 Position = UDim2.new(0.5, 0, 1, -10),
                 Size = UDim2.new(0.92, 0, 0, 8),
@@ -1490,7 +1561,7 @@ function AuzuraLib:Window(cfg)
             gradient3(circle, 0.482699)
 
             local dragging = false
-            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), Parent = f})
+            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), ZIndex = 5, Parent = f})
 
             local function setFromPos(p)
                 p = math.clamp(p, 0, 1)
@@ -1544,20 +1615,25 @@ function AuzuraLib:Window(cfg)
         function Tab:Button(c)
             c = c or {}
             local hasDesc = c.Desc ~= nil and c.Desc ~= ""
-            local f, btn, titleLbl, fire = click(getCol(c.Side), c.Title, c.Icon, c.Callback, hasDesc, c.Desc)
+            local hasIcon = c.Icon ~= nil
+            local col = getCol(c.Side)
+            local f, btn, titleLbl, fire = click(col, c.Title, c.Icon, c.Callback, hasDesc, c.Desc)
             counter = counter + 1
             f.LayoutOrder = counter
-            local col = getCol(c.Side)
-            f.Parent = col
             wireHighlight(f)
 
             local cnt = #col:GetChildren()
             badgeLabel.Text = tostring(cnt)
             tw(badge, {Size = UDim2.new(0, 32 + (cnt >= 10 and 4 or 0), 0, 18)}, 0.3, Enum.EasingStyle.Back)
 
-            if c.Icon then
+            if hasIcon and not hasDesc then
+                f.Size = UDim2.new(0.97, 0, 0, 55)
+            end
+
+            if hasIcon then
                 local iconFrame = lak(f, c.Icon, 24)
-                iconFrame.Position = UDim2.new(0, 8, 0.5, -12)
+                iconFrame.AnchorPoint = Vector2.new(0, 0.5)
+                iconFrame.Position = UDim2.new(0, 8, 0.5, 0)
                 titleLbl.Position = UDim2.new(0.5, 16, hasDesc and 0.35 or 0.5, 0)
                 titleLbl.Size = UDim2.new(0.85, -16, hasDesc and 0.4 or 0.8, 0)
             end
@@ -1573,7 +1649,7 @@ function AuzuraLib:Window(cfg)
         -- Dropdown
         function Tab:Dropdown(c)
             c = c or {}
-            local f = newCard(c.Side, 50, "Dropdown")
+            local f = newCard(c.Side, 65, "Dropdown")
             local multi = c.Multi or false
             local selected = c.Value or (multi and {} or nil)
             local items = {}
@@ -1625,7 +1701,7 @@ function AuzuraLib:Window(cfg)
             local itemH = 32
             local padEach = 4
             local baseH = 78 + 8
-            local menuH = baseH + #items * (itemH + padEach) + 8
+            local menuH = baseH + math.max(#items, 1) * (itemH + padEach) + 8
             local menuWidth = 240
 
             local menu = mk("Frame", {
@@ -1828,8 +1904,8 @@ function AuzuraLib:Window(cfg)
                         end
                     end)
                 end
-                local newH = baseH + #items * (itemH + padEach) + 8
-                menu.Size = UDim2.new(0, menuWidth, 0, newH) -- Fixed: sử dụng menuWidth thay vì AbsoluteSize.X
+                local newH = baseH + math.max(#items, 1) * (itemH + padEach) + 8
+                menu.Size = UDim2.new(0, menuWidth, 0, newH) -- Đã sửa: Dùng menuWidth thay vì AbsoluteSize.X
             end
             rebuildItems()
 
@@ -1842,7 +1918,6 @@ function AuzuraLib:Window(cfg)
                 end
             end)
 
-            -- close on outside
             local isOpen = false
             local closeConn = nil
 
@@ -1865,7 +1940,7 @@ function AuzuraLib:Window(cfg)
                 Size = UDim2.new(1, 0, 1, 0),
                 BorderSizePixel = 0,
                 AutoButtonColor = false,
-                ZIndex = 10,
+                ZIndex = 5,
                 Parent = f,
             })
 
@@ -2014,6 +2089,7 @@ function AuzuraLib:Window(cfg)
                 TextSize = 13,
                 ClearTextOnFocus = c.ClearOnFocus ~= false,
                 TextScaled = true,
+                ZIndex = 5,
                 Parent = inputFrame,
             })
 
@@ -2046,7 +2122,7 @@ function AuzuraLib:Window(cfg)
         -- Keybind
         function Tab:Keybind(c)
             c = c or {}
-            local f = newCard(c.Side, 55, "Keybind")
+            local f = newCard(c.Side, 70, "Keybind")
             f.BackgroundTransparency = 0.2
             local currentKey = c.Key or Enum.KeyCode.Q
             local currentMode = c.Mode or "Toggle"
@@ -2130,6 +2206,7 @@ function AuzuraLib:Window(cfg)
                 Size = UDim2.new(0, 70, 0, 20),
                 Text = "",
                 AutoButtonColor = false,
+                ZIndex = 5,
                 Parent = f,
             })
             corner(modeBtn, 6)
@@ -2160,8 +2237,12 @@ function AuzuraLib:Window(cfg)
 
             local listening = false
             local clickBtn = mk("TextButton", {
-                Name = "Click", BackgroundTransparency = 1, Text = "",
-                Size = UDim2.new(1, 0, 1, 0), Parent = f,
+                Name = "Click",
+                BackgroundTransparency = 1,
+                Text = "",
+                Size = UDim2.new(1, 0, 1, 0),
+                ZIndex = 5,
+                Parent = f,
             })
 
             local function updateWidth(txt)
@@ -2169,8 +2250,7 @@ function AuzuraLib:Window(cfg)
                     return TextService:GetTextSize(txt, 13, keyText.Font, Vector2.new(1000, 1000))
                 end)
                 if ok and ts then
-                    local w = math.clamp(ts.X + 24, 40, 60)
-                    keyDisplay.Size = UDim2.new(0, w, 0, 28)
+                    keyDisplay.Size = UDim2.new(0, math.clamp(ts.X + 24, 40, 60), 0, 28)
                 end
             end
 
@@ -2256,7 +2336,7 @@ function AuzuraLib:Window(cfg)
                 Parent = f,
             })
 
-            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), Parent = f})
+            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), ZIndex = 5, Parent = f})
             btn.MouseEnter:Connect(function() tw(f, {BackgroundTransparency = 0.4}, 0.3) end)
             btn.MouseLeave:Connect(function() tw(f, {BackgroundTransparency = 0}, 0.3) end)
             btn.MouseButton1Click:Connect(function()
@@ -2364,7 +2444,7 @@ function AuzuraLib:Window(cfg)
                 end)
             end
 
-            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), Parent = f})
+            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), ZIndex = 5, Parent = f})
             btn.MouseButton1Click:Connect(function()
                 EffectClick(bg)
                 openFullscreen()
