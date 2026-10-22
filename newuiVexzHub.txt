@@ -1,0 +1,2392 @@
+--!nonstrict
+
+-- services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UIS = game:GetService("UserInputService")
+local TextService = game:GetService("TextService")
+local CoreGui
+pcall(function() CoreGui = game:GetService("CoreGui") end)
+
+local LP = Players.LocalPlayer
+local IS_STUDIO = RunService:IsStudio()
+local ParentGui = (IS_STUDIO or not CoreGui) and LP:WaitForChild("PlayerGui") or CoreGui
+
+-- theme
+local Theme = {
+    bg = Color3.fromRGB(15, 15, 18),
+    card = Color3.fromRGB(25, 25, 30),
+    cardInner = Color3.fromRGB(20, 20, 25),
+    border = Color3.fromRGB(30, 30, 40),
+    search = Color3.fromRGB(28, 28, 35),
+    underline = Color3.fromRGB(85, 85, 110),
+    accent = Color3.fromRGB(100, 200, 255),
+    text = Color3.fromRGB(255, 255, 255),
+    textDim = Color3.fromRGB(200, 200, 200),
+    textMuted = Color3.fromRGB(145, 145, 170),
+    g1 = Color3.fromRGB(0, 255, 127),
+    g2 = Color3.fromRGB(0, 170, 255),
+    g3 = Color3.fromRGB(85, 85, 255),
+    discord = Color3.fromRGB(88, 101, 242),
+    red1 = Color3.fromRGB(255, 89, 89),
+    red2 = Color3.fromRGB(255, 0, 0),
+    red3 = Color3.fromRGB(85, 0, 0),
+    fontBold = Enum.Font.GothamBold,
+    fontReg = Enum.Font.Gotham,
+    fontBlack = Enum.Font.GothamBlack,
+    fontSans = Enum.Font.SourceSans,
+}
+
+-- mk helper
+local function mk(class, props, parent)
+    local o = Instance.new(class)
+    for k, v in pairs(props or {}) do o[k] = v end
+    if parent then o.Parent = parent end
+    return o
+end
+
+-- corner helper
+local function corner(p, r)
+    return mk("UICorner", {CornerRadius = r or UDim.new(0, 8)}, p)
+end
+
+-- stroke helper
+local function stroke(p, color, thickness, transparency)
+    return mk("UIStroke", {
+        Color = color or Theme.border,
+        Thickness = thickness or 1,
+        Transparency = transparency or 0,
+    }, p)
+end
+
+-- gradient3 helper
+local function gradient3(p, mid, rot, transparencies)
+    local g = mk("UIGradient", {
+        Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Theme.g1),
+            ColorSequenceKeypoint.new(mid or 0.482699, Theme.g2),
+            ColorSequenceKeypoint.new(1, Theme.g3),
+        }),
+        Rotation = rot or 0,
+    }, p)
+    if transparencies then
+        g.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, transparencies[1] or 0),
+            NumberSequenceKeypoint.new(1, transparencies[2] or 0),
+        })
+    end
+    return g
+end
+
+-- gradientCustom helper
+local function gradientCustom(p, points, rot, transparencies)
+    local g = mk("UIGradient", {
+        Color = ColorSequence.new(points),
+        Rotation = rot or 0,
+    }, p)
+    if transparencies then
+        g.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, transparencies[1] or 0),
+            NumberSequenceKeypoint.new(1, transparencies[2] or 0),
+        })
+    end
+    return g
+end
+
+-- tw helper
+local function tw(obj, goals, duration, style, direction)
+    local t = TweenService:Create(obj,
+        TweenInfo.new(duration or 0.3, style or Enum.EasingStyle.Quad, direction or Enum.EasingDirection.Out),
+        goals)
+    t:Play()
+    return t
+end
+
+-- parse size
+local function parseSize(str)
+    if not str then return UDim2.new(0, 520, 0, 340) end
+    local w, h = str:match("(%d+)%s*,%s*(%d+)")
+    if w and h then return UDim2.new(0, tonumber(w), 0, tonumber(h)) end
+    return UDim2.new(0, 520, 0, 340)
+end
+
+-- calc text height
+local function calcTextHeight(text, textSize, font, maxWidth)
+    local size = TextService:GetTextSize(text, textSize, font, Vector2.new(maxWidth, 10000))
+    return size.Y
+end
+
+-- global gui ref
+local _gui = nil
+
+-- GetIcon closure
+local function GetIcon(id, size)
+    return mk("ImageLabel", {
+        BackgroundTransparency = 1,
+        Image = "rbxassetid://" .. tostring(id),
+        ImageColor3 = Theme.accent,
+        Size = UDim2.new(0, size or 22, 0, size or 22),
+    })
+end
+
+-- EffectClick2 closure
+local function EffectClick2(parent)
+    local m = UIS:GetMouseLocation()
+    local f = mk("Frame", {
+        BackgroundColor3 = Theme.g1,
+        BackgroundTransparency = 0.5,
+        BorderSizePixel = 0,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.fromOffset(m.X, m.Y),
+        Size = UDim2.new(0, 0, 0, 0),
+        ZIndex = 10,
+        Parent = parent,
+    })
+    corner(f, UDim.new(1, 0))
+    local g = gradient3(f, 0.482699, 48)
+    g.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Theme.g1),
+        ColorSequenceKeypoint.new(1, Theme.g3),
+    })
+    local t = TweenService:Create(f, TweenInfo.new(1, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out), {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(0, 3, 0, 3),
+    })
+    t.Completed:Connect(function() f:Destroy() end)
+    t:Play()
+end
+
+-- EffectClick closure
+local function EffectClick(parent)
+    local m = UIS:GetMouseLocation()
+    local f = mk("Frame", {
+        BackgroundColor3 = Theme.text,
+        BackgroundTransparency = 0.5,
+        BorderSizePixel = 0,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.fromOffset(m.X, m.Y),
+        Size = UDim2.new(0, 0, 0, 0),
+        ZIndex = 10,
+        Parent = parent,
+    })
+    corner(f, UDim.new(1, 0))
+    gradient3(f, 0.482699, 48)
+    local t = TweenService:Create(f, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(0, 1.5, 0, 1.5),
+    })
+    t.Completed:Connect(function() f:Destroy() end)
+    t:Play()
+end
+
+-- lak closure
+local function lak(parent, imageId, size)
+    local f = mk("Frame", {
+        BackgroundColor3 = Theme.card,
+        BackgroundTransparency = 0.5,
+        Size = UDim2.new(0, size or 32, 0, size or 32),
+        BorderSizePixel = 0,
+        Parent = parent,
+    })
+    corner(f, 8)
+    stroke(f, Theme.border, 1, 0.5)
+    local img = mk("ImageLabel", {
+        BackgroundTransparency = 1,
+        Image = "rbxassetid://" .. tostring(imageId),
+        ImageColor3 = Theme.accent,
+        Size = UDim2.new(1, -4, 1, -4),
+        Position = UDim2.new(0, 2, 0, 2),
+        Parent = f,
+    })
+    gradient3(img, 0.482699)
+    return f, img
+end
+
+-- ResizeFrame closure
+local function ResizeFrame(target, handle, ring)
+    local resizing, startSize, startMouse = false, nil, nil
+    handle.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1
+           or i.UserInputType == Enum.UserInputType.Touch then
+            resizing = true
+            startSize = target.Size
+            startMouse = i.Position
+            if ring then
+                task.spawn(function()
+                    local rot = 0
+                    while resizing do
+                        rot = (rot + 10) % 360
+                        ring.Rotation = rot
+                        task.wait(0.02)
+                    end
+                end)
+            end
+        end
+    end)
+    UIS.InputChanged:Connect(function(i)
+        if resizing and (i.UserInputType == Enum.UserInputType.MouseMovement
+                         or i.UserInputType == Enum.UserInputType.Touch) then
+            local dx = i.Position.X - startMouse.X
+            local dy = i.Position.Y - startMouse.Y
+            target.Size = UDim2.new(0,
+                math.clamp(startSize.X.Offset + dx, 420, 1000), 0,
+                math.clamp(startSize.Y.Offset + dy, 300, 700))
+        end
+    end)
+    UIS.InputEnded:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1
+           or i.UserInputType == Enum.UserInputType.Touch then
+            resizing = false
+        end
+    end)
+end
+
+-- click closure
+local function click(parent, text, icon, callback, hasDesc, desc)
+    local h = hasDesc and 55 or 35
+    local f = mk("Frame", {
+        BackgroundColor3 = Theme.text,
+        BackgroundTransparency = 0,
+        Size = UDim2.new(0.97, 0, 0, h),
+        BorderSizePixel = 0,
+        ClipsDescendants = true,
+        Parent = parent,
+    })
+    corner(f, 10)
+    gradient3(f, 0.5)
+
+    local titleLabel = mk("TextLabel", {
+        Name = "Title",
+        BackgroundTransparency = 1,
+        AnchorPoint = Vector2.new(0.5, hasDesc and 0.35 or 0.5),
+        Position = UDim2.new(0.5, 0, hasDesc and 0.35 or 0.5, 0),
+        Size = UDim2.new(0.95, 0, hasDesc and 0.4 or 0.8, 0),
+        Text = text or "Button",
+        TextColor3 = Theme.text,
+        Font = Theme.fontBold,
+        TextSize = 14,
+        TextScaled = true,
+        TextWrapped = true,
+        Parent = f,
+    })
+
+    if hasDesc and desc then
+        mk("TextLabel", {
+            BackgroundTransparency = 1,
+            AnchorPoint = Vector2.new(0.5, 0.7),
+            Position = UDim2.new(0.5, 0, 0.7, 0),
+            Size = UDim2.new(0.95, 0, 0.3, 0),
+            Text = desc,
+            TextColor3 = Theme.text,
+            TextTransparency = 0.25,
+            Font = Theme.fontReg,
+            TextSize = 11,
+            TextScaled = true,
+            TextWrapped = true,
+            Parent = f,
+        })
+    end
+
+    local s = stroke(f, Theme.text, 2, 0.65)
+    local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), Parent = f})
+
+    btn.MouseEnter:Connect(function()
+        tw(f, {BackgroundTransparency = 0.4}, 0.3)
+        tw(s, {Transparency = 0.85}, 0.3)
+    end)
+    btn.MouseLeave:Connect(function()
+        tw(f, {BackgroundTransparency = 0}, 0.3)
+        tw(s, {Transparency = 0.65}, 0.3)
+    end)
+
+    local function fire()
+        EffectClick(_gui or f)
+        if callback then
+            task.spawn(function()
+                local ok, err = pcall(callback)
+                if not ok then warn("[AuzuraLib] click callback error:", err) end
+            end)
+        end
+    end
+    btn.MouseButton1Click:Connect(fire)
+
+    return f, btn, titleLabel, fire
+end
+
+-- library
+local AuzuraLib = {}
+
+-- Window constructor
+function AuzuraLib:Window(cfg)
+    cfg = cfg or {}
+    local old = ParentGui:FindFirstChild("AuzuRax")
+    if old then old:Destroy() end
+
+    local gui = mk("ScreenGui", {
+        Name = "AuzuRax",
+        ZIndexBehavior = Enum.ZIndexBehavior.Global,
+        ResetOnSpawn = false,
+        DisplayOrder = 100,
+        Parent = ParentGui,
+    })
+    _gui = gui
+
+    local windowSize = parseSize(cfg.SizeUi)
+    local bg = mk("Frame", {
+        Name = "Background",
+        BackgroundColor3 = Theme.bg,
+        BackgroundTransparency = 0.1,
+        Size = UDim2.new(0, 0, 0, 0),
+        Position = UDim2.new(0.5, -windowSize.X.Offset / 2, 0.5, -windowSize.Y.Offset / 2),
+        BorderSizePixel = 0,
+        Visible = true,
+        ClipsDescendants = true,
+        Parent = gui,
+    })
+    corner(bg, 20)
+    stroke(bg, Color3.fromRGB(80, 80, 100), 2.5, 0.6)
+
+    -- bounce in
+    tw(bg, {Size = windowSize}, 1, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out)
+
+    -- drop shadow
+    mk("ImageLabel", {
+        Name = "DropShadow",
+        BackgroundTransparency = 1,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        Size = UDim2.new(1, 160, 1, 160),
+        Image = "rbxassetid://8992230677",
+        ImageColor3 = Color3.new(0, 0, 0),
+        ImageTransparency = 0.15,
+        ScaleType = Enum.ScaleType.Slice,
+        SliceCenter = Rect.new(99, 99, 99, 99),
+        ZIndex = 0,
+        Parent = bg,
+    })
+
+    -- effect bg
+    mk("ImageLabel", {
+        Name = "Effect",
+        BackgroundTransparency = 1,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        Size = UDim2.new(1, 0, 1, 0),
+        Image = "rbxassetid://132687652275989",
+        ImageColor3 = Theme.g1,
+        ImageTransparency = 0.05,
+        ScaleType = Enum.ScaleType.Crop,
+        ZIndex = 1,
+        Parent = bg,
+    })
+
+    -- resize handle
+    local resizeHandle = mk("Frame", {
+        Name = "ResizeHandle",
+        BackgroundColor3 = Theme.border,
+        BackgroundTransparency = 0.3,
+        AnchorPoint = Vector2.new(1, 1),
+        Position = UDim2.new(1, -5, 1, -5),
+        Size = UDim2.new(0, 25, 0, 25),
+        ZIndex = 10,
+        BorderSizePixel = 0,
+        Parent = bg,
+    })
+    corner(resizeHandle, UDim.new(1, 0))
+    stroke(resizeHandle, Color3.fromRGB(100, 100, 130), 2, 0.7)
+
+    mk("ImageLabel", {
+        BackgroundTransparency = 1,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        Size = UDim2.new(0, 14, 0, 14),
+        Image = "rbxassetid://7734053495",
+        ImageColor3 = Color3.fromRGB(150, 150, 180),
+        Parent = resizeHandle,
+    })
+
+    local progressRing = mk("Frame", {
+        Name = "ProgressRing",
+        BackgroundTransparency = 1,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        Size = UDim2.new(0, 25, 0, 25),
+        ZIndex = 9,
+        Parent = resizeHandle,
+    })
+    corner(progressRing, UDim.new(1, 0))
+    gradient3(progressRing, 0.5, 0)
+
+    mk("Frame", {
+        Name = "ProgressInner",
+        BackgroundColor3 = Theme.border,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        Size = UDim2.new(0, 19, 0, 19),
+        ZIndex = 10,
+        BorderSizePixel = 0,
+        Parent = progressRing,
+    })
+    corner(progressRing:GetChildren()[#progressRing:GetChildren()], UDim.new(1, 0))
+
+    ResizeFrame(bg, resizeHandle, progressRing)
+
+    -- header
+    local header = mk("Frame", {
+        Name = "Header",
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, 65),
+        Parent = bg,
+    })
+
+    local wDrag, wStart, wPos = false, nil, nil
+    header.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1
+           or i.UserInputType == Enum.UserInputType.Touch then
+            wDrag = true
+            wStart = i.Position
+            wPos = bg.Position
+        end
+    end)
+    UIS.InputChanged:Connect(function(i)
+        if wDrag and (i.UserInputType == Enum.UserInputType.MouseMovement
+                      or i.UserInputType == Enum.UserInputType.Touch) then
+            bg.Position = UDim2.new(
+                wPos.X.Scale, wPos.X.Offset + (i.Position.X - wStart.X),
+                wPos.Y.Scale, wPos.Y.Offset + (i.Position.Y - wStart.Y))
+        end
+    end)
+    UIS.InputEnded:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1
+           or i.UserInputType == Enum.UserInputType.Touch then
+            wDrag = false
+        end
+    end)
+
+    -- title tile
+    local iconTile = mk("Frame", {
+        Name = "IconTileFrame",
+        BackgroundTransparency = 1,
+        Size = UDim2.new(0, 450, 0, 22),
+        Position = UDim2.new(0, 16, 0, 12),
+        Parent = header,
+    })
+    if cfg.IconTile then
+        mk("ImageLabel", {
+            Name = "IconTileImage",
+            BackgroundTransparency = 1,
+            Image = "rbxassetid://" .. tostring(cfg.IconTile),
+            ImageColor3 = Theme.accent,
+            Size = UDim2.new(0, 22, 0, 22),
+            Parent = iconTile,
+        })
+    end
+    mk("TextLabel", {
+        Name = "TitleWithIcon",
+        BackgroundTransparency = 1,
+        Text = cfg.Title or "Auzura UI",
+        TextColor3 = Theme.text,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Font = Theme.fontBold,
+        TextSize = 18,
+        Size = UDim2.new(1, -28, 1, 0),
+        Position = UDim2.new(0, 28, 0, 0),
+        Parent = iconTile,
+    })
+
+    local hLine = mk("Frame", {
+        Name = "Line",
+        BackgroundColor3 = Theme.text,
+        Size = UDim2.new(0, 80, 0, 3),
+        Position = UDim2.new(0, 16, 0, 42),
+        BorderSizePixel = 0,
+        Parent = header,
+    })
+    corner(hLine, 2)
+    gradient3(hLine, 0.482699)
+
+    mk("TextLabel", {
+        Name = "Desc",
+        BackgroundTransparency = 1,
+        Text = cfg.Desc or "",
+        TextColor3 = Theme.text,
+        TextTransparency = 0.35,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Font = Theme.fontBold,
+        TextSize = 12,
+        Size = UDim2.new(0, 260, 0, 16),
+        Position = UDim2.new(0, 100, 0, 42),
+        Parent = header,
+    })
+
+    -- close button
+    local closeBtn = mk("TextButton", {
+        Name = "CloseUI",
+        BackgroundColor3 = Color3.fromRGB(20, 20, 25),
+        BackgroundTransparency = 0.15,
+        AnchorPoint = Vector2.new(0, 1),
+        Position = UDim2.new(0.06, 0, 0.21, 0),
+        Size = UDim2.new(0, 55, 0, 55),
+        Text = "",
+        AutoButtonColor = false,
+        BorderSizePixel = 0,
+        Parent = gui,
+    })
+    corner(closeBtn, 14)
+    stroke(closeBtn, Color3.fromRGB(100, 100, 130), 2.5, 0.6)
+
+    local closeTxt = mk("TextLabel", {
+        Name = "CloseText",
+        BackgroundTransparency = 1,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        Size = UDim2.new(1, 0, 1, 0),
+        Text = "Open",
+        TextColor3 = Theme.text,
+        Font = Theme.fontBlack,
+        TextSize = 16,
+        TextTransparency = 0,
+        ZIndex = 3,
+        Parent = closeBtn,
+    })
+
+    closeBtn.MouseButton1Click:Connect(function()
+        tw(closeTxt, {TextTransparency = 1}, 0.15)
+        task.wait(0.15)
+        bg.Visible = not bg.Visible
+        closeTxt.Text = bg.Visible and "Close" or "Open"
+        tw(closeTxt, {TextTransparency = 0}, 0.15)
+    end)
+
+    -- tab bar
+    local tabBar = mk("ScrollingFrame", {
+        Name = "Tab",
+        BackgroundTransparency = 1,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0.5, 0, 0.58, 0),
+        Size = UDim2.new(0.96, 0, 0.73, 0),
+        CanvasSize = UDim2.new(0, 0, 0, 0),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        ScrollBarThickness = 0,
+        ScrollBarImageColor3 = Color3.fromRGB(100, 100, 130),
+        ScrollBarImageTransparency = 0.5,
+        Parent = bg,
+    })
+    local tabGrid = mk("UIGridLayout", {
+        CellSize = UDim2.new(0.23, 0, 0, 110),
+        CellPadding = UDim2.new(0, 12, 0, 12),
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Parent = tabBar,
+    })
+
+    -- pages container
+    local pagesContainer = mk("Frame", {
+        Name = "Pages",
+        BackgroundTransparency = 1,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0.5, 0, 0.58, 0),
+        Size = UDim2.new(0.97, 0, 0.73, 0),
+        Visible = false,
+        Parent = bg,
+    })
+
+    -- back button
+    local returnFrame = mk("Frame", {
+        Name = "Return",
+        BackgroundColor3 = Theme.text,
+        BackgroundTransparency = 1,
+        AnchorPoint = Vector2.new(1, 0),
+        Position = UDim2.new(0.95, 0, 0.055, 0),
+        Size = UDim2.new(0, 100, 0, 30),
+        ClipsDescendants = true,
+        Visible = false,
+        Parent = bg,
+    })
+    corner(returnFrame, 10)
+    gradientCustom(returnFrame, {
+        ColorSequenceKeypoint.new(0, Theme.red1),
+        ColorSequenceKeypoint.new(0.482699, Theme.red2),
+        ColorSequenceKeypoint.new(1, Theme.red3),
+    }, 0)
+    stroke(returnFrame, Color3.fromRGB(255, 85, 127), 2.5, 0)
+
+    mk("ImageLabel", {
+        BackgroundTransparency = 1,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        Size = UDim2.new(1, 50, 1, 0),
+        Image = "rbxassetid://87782680483863",
+        ImageTransparency = 0.75,
+        ScaleType = Enum.ScaleType.Crop,
+        Parent = returnFrame,
+    })
+
+    mk("TextLabel", {
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        Size = UDim2.new(1, 0, 1, 0),
+        BackgroundTransparency = 1,
+        Text = "Back",
+        TextColor3 = Theme.text,
+        Font = Theme.fontBold,
+        TextSize = 14,
+        Parent = returnFrame,
+    })
+
+    local retBtn = mk("TextButton", {
+        BackgroundTransparency = 1,
+        Text = "",
+        Size = UDim2.new(1, 0, 1, 0),
+        Parent = returnFrame,
+    })
+
+    -- tabs state
+    local tabs = {}
+    local currentTabIdx = nil
+
+    -- responsive grid
+    local function recomputeGrid()
+        if #tabs == 0 then return end
+        local absW = bg.AbsoluteSize.X * 0.96
+        if absW <= 0 then absW = windowSize.X.Offset * 0.96 end
+        local pad = 12
+        local cellPx = math.floor((absW - pad * (#tabs - 1)) / #tabs)
+        tabGrid.CellSize = UDim2.new(cellPx / absW, 0, 0, 110)
+    end
+    bg:GetPropertyChangedSignal("AbsoluteSize"):Connect(recomputeGrid)
+
+    -- back handler
+    local function goBackToTabList()
+        for _, t in ipairs(tabs) do t.page.Visible = false end
+        pagesContainer.Visible = false
+        tabBar.Visible = true
+        currentTabIdx = nil
+        tw(returnFrame, {Position = UDim2.new(0.95, 0, 0.055, 0)}, 0.3, Enum.EasingStyle.Back)
+        task.delay(0.3, function()
+            if currentTabIdx == nil then returnFrame.Visible = false end
+        end)
+        for _, t in ipairs(tabs) do
+            tw(t.card, {BackgroundTransparency = 0.2}, 0.3)
+            tw(t.cardStroke, {Transparency = 0.75}, 0.3)
+            tw(t.hname, {TextStrokeTransparency = 0.3}, 0.3)
+            if t.banner then tw(t.banner, {Size = UDim2.new(1, 0, 1, 0)}, 0.3) end
+        end
+    end
+    retBtn.MouseButton1Click:Connect(function()
+        EffectClick(bg)
+        goBackToTabList()
+    end)
+
+    -- F2 hotkey
+    UIS.InputBegan:Connect(function(input, gp)
+        if gp then return end
+        if input.KeyCode == Enum.KeyCode.F2 then
+            bg.Visible = not bg.Visible
+            closeTxt.Text = bg.Visible and "Close" or "Open"
+        end
+    end)
+
+    -- mobile pinch
+    local touches = {}
+    local initialDist = nil
+    local initialSize = nil
+    UIS.TouchStarted:Connect(function(input)
+        if #touches == 0 then
+            touches[1] = input
+        elseif #touches == 1 then
+            touches[2] = input
+            initialDist = (touches[1].Position - touches[2].Position).Magnitude
+            initialSize = bg.Size
+        end
+    end)
+    UIS.TouchMoved:Connect(function(input)
+        if #touches >= 2 then
+            for i, t in ipairs(touches) do
+                if t == input then touches[i] = input; break end
+            end
+            if touches[1] and touches[2] then
+                local dist = (touches[1].Position - touches[2].Position).Magnitude
+                if initialDist and initialDist > 0 then
+                    local scale = dist / initialDist
+                    bg.Size = UDim2.new(0,
+                        math.clamp(initialSize.X.Offset * scale, 420, 1000), 0,
+                        math.clamp(initialSize.Y.Offset * scale, 300, 700))
+                end
+            end
+        end
+    end)
+    UIS.TouchEnded:Connect(function(input)
+        for i, t in ipairs(touches) do
+            if t == input then table.remove(touches, i); break end
+        end
+        if #touches < 2 then initialDist = nil end
+    end)
+
+    -- window object
+    local Window = {}
+    Window.Gui = gui
+    Window.Background = bg
+    Window.Close = function()
+        gui:Destroy()
+        _gui = nil
+    end
+
+    -- Add tab
+    function Window:Add(tabCfg)
+        tabCfg = tabCfg or {}
+        local idx = #tabs + 1
+        local numCols = math.clamp(tabCfg.Columns or 2, 1, 4)
+
+        -- tab card
+        local card = mk("Frame", {
+            Name = "TabCard",
+            BackgroundColor3 = Theme.card,
+            BackgroundTransparency = 0.2,
+            Size = UDim2.new(0, 155, 0, 200),
+            BorderSizePixel = 0,
+            ClipsDescendants = true,
+            LayoutOrder = idx,
+            Parent = tabBar,
+        })
+        corner(card, 16)
+        local cardStroke = stroke(card, Color3.fromRGB(120, 120, 150), 2, 0.75)
+
+        local banner = nil
+        if tabCfg.Banner then
+            banner = mk("ImageLabel", {
+                Name = "Banner",
+                BackgroundTransparency = 1,
+                Size = UDim2.new(1, 0, 1, 0),
+                Image = "rbxassetid://" .. tostring(tabCfg.Banner),
+                ImageTransparency = 0.15,
+                ScaleType = Enum.ScaleType.Crop,
+                ZIndex = 2,
+                Parent = card,
+            })
+            corner(banner, 16)
+        end
+
+        local overlay = mk("Frame", {
+            Name = "Overlay",
+            BackgroundColor3 = Color3.new(0, 0, 0),
+            BackgroundTransparency = 0.2,
+            Size = UDim2.new(1, 0, 1, 0),
+            BorderSizePixel = 0,
+            ZIndex = 3,
+            Parent = card,
+        })
+        corner(overlay, 16)
+        gradient3(overlay, 0.5, 50, {0.7, 0.9})
+
+        local badge = mk("Frame", {
+            Name = "BadgeFrame",
+            BackgroundColor3 = Theme.text,
+            AnchorPoint = Vector2.new(1, 0),
+            Position = UDim2.new(1, -8, 0, 8),
+            Size = UDim2.new(0, 32, 0, 18),
+            ZIndex = 6,
+            BorderPixelSize = 0,
+            Parent = card,
+        })
+        corner(badge, UDim.new(1, 0))
+        gradientCustom(badge, {
+            ColorSequenceKeypoint.new(0, Theme.g1),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 200, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 100, 255)),
+        }, 45)
+        local badgeLabel = mk("TextLabel", {
+            Name = "BadgeLabel",
+            BackgroundTransparency = 1,
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.new(0.5, 0, 0.5, 0),
+            Size = UDim2.new(1, -4, 1, -4),
+            Text = "0",
+            TextColor3 = Theme.text,
+            Font = Theme.fontBold,
+            TextSize = 12,
+            TextStrokeTransparency = 0.5,
+            ZIndex = 7,
+            Parent = badge,
+        })
+
+        local tabIcon = nil
+        if tabCfg.Icon then
+            tabIcon = mk("ImageLabel", {
+                Name = "Icon",
+                BackgroundTransparency = 1,
+                Image = "rbxassetid://" .. tostring(tabCfg.Icon),
+                ImageColor3 = Theme.accent,
+                Size = UDim2.new(0, 32, 0, 32),
+                Position = UDim2.new(0, 8, 0.5, -40),
+                ZIndex = 5,
+                Parent = card,
+            })
+        end
+
+        local hname = mk("TextLabel", {
+            Name = "HubName",
+            BackgroundTransparency = 1,
+            AnchorPoint = Vector2.new(0.5, 1),
+            Position = UDim2.new(0.5, 0, 0.92, 0),
+            Size = UDim2.new(0.85, 0, 0, 24),
+            Text = tabCfg.Title or "Tab",
+            TextColor3 = Theme.text,
+            Font = Theme.fontBold,
+            TextSize = 14,
+            TextScaled = true,
+            TextWrapped = true,
+            TextXAlignment = Enum.TextXAlignment.Center,
+            TextStrokeTransparency = 0.3,
+            ZIndex = 5,
+            Parent = card,
+        })
+        mk("UITextSizeConstraint", {MaxTextSize = 14, MinTextSize = 10, Parent = hname})
+
+        mk("TextLabel", {
+            Name = "Title",
+            BackgroundTransparency = 1,
+            AnchorPoint = Vector2.new(0.5, 1),
+            Position = UDim2.new(0.5, 0, 0.92, 0),
+            Size = UDim2.new(0.85, 0, 0, 18),
+            Text = tabCfg.Desc or "",
+            TextColor3 = Theme.text,
+            TextTransparency = 0.35,
+            Font = Theme.fontReg,
+            TextSize = 11,
+            TextScaled = true,
+            TextWrapped = true,
+            TextXAlignment = Enum.TextXAlignment.Center,
+            ZIndex = 5,
+            Parent = card,
+        })
+
+        local tabClick = mk("TextButton", {
+            Name = "Click",
+            BackgroundTransparency = 1,
+            Text = "",
+            Size = UDim2.new(1, 0, 1, 0),
+            ZIndex = 5,
+            Parent = card,
+        })
+
+        -- page
+        local page = mk("Frame", {
+            Name = "Page",
+            BackgroundTransparency = 1,
+            Size = UDim2.new(1, 0, 1, 0),
+            Visible = false,
+            Parent = pagesContainer,
+        })
+
+        -- search
+        local searchFrame = mk("Frame", {
+            Name = "SearchFrame",
+            BackgroundColor3 = Theme.search,
+            BackgroundTransparency = 0.25,
+            Size = UDim2.new(1, 0, 0, 38),
+            BorderSizePixel = 0,
+            Parent = page,
+        })
+        corner(searchFrame, 14)
+        local searchStroke = stroke(searchFrame, Color3.fromRGB(110, 110, 140), 2, 0.7)
+
+        local searchGlow = mk("ImageLabel", {
+            Name = "SearchGlow",
+            BackgroundTransparency = 1,
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.new(0.5, 0, 0.5, 0),
+            Size = UDim2.new(1, 70, 1, 70),
+            Image = "rbxassetid://8992230677",
+            ImageColor3 = Theme.g2,
+            ImageTransparency = 0.9,
+            ScaleType = Enum.ScaleType.Slice,
+            SliceCenter = Rect.new(99, 99, 99, 99),
+            ZIndex = 0,
+            Parent = searchFrame,
+        })
+
+        local searchIcon = mk("ImageLabel", {
+            Name = "SearchImage",
+            BackgroundTransparency = 1,
+            AnchorPoint = Vector2.new(0, 0.5),
+            Position = UDim2.new(0, 14, 0.5, 0),
+            Size = UDim2.new(0, 20, 0, 20),
+            Image = "rbxassetid://18557078698",
+            ImageColor3 = Color3.fromRGB(110, 210, 255),
+            Parent = searchFrame,
+        })
+
+        local searchBox = mk("TextBox", {
+            Name = "SearchBox",
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0, 42, 0, 3),
+            Size = UDim2.new(1, -52, 1, -6),
+            PlaceholderText = "Search elements...",
+            PlaceholderColor3 = Theme.textMuted,
+            TextColor3 = Theme.text,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Font = Theme.fontBold,
+            TextSize = 13,
+            Text = "",
+            Parent = searchFrame,
+        })
+
+        local underline = mk("Frame", {
+            Name = "SearchUnderline",
+            BackgroundColor3 = Theme.underline,
+            BackgroundTransparency = 0.75,
+            AnchorPoint = Vector2.new(0.5, 1),
+            Position = UDim2.new(0.5, 0, 1, -4),
+            Size = UDim2.new(1, -24, 0, 3),
+            BorderSizePixel = 0,
+            Parent = searchFrame,
+        })
+        corner(underline, UDim.new(1, 0))
+
+        local underlineActive = mk("Frame", {
+            Name = "SearchUnderlineActive",
+            BackgroundColor3 = Theme.accent,
+            BackgroundTransparency = 0.999,
+            AnchorPoint = Vector2.new(0, 0.5),
+            Position = UDim2.new(0, 0, 0.5, 0),
+            Size = UDim2.new(1, 0, 1, 0),
+            BorderSizePixel = 0,
+            Parent = underline,
+        })
+        corner(underlineActive, UDim.new(1, 0))
+        gradient3(underlineActive, 0.482699)
+
+        searchBox.Focused:Connect(function()
+            tw(underlineActive, {BackgroundTransparency = 0}, 0.4)
+            tw(searchStroke, {Transparency = 0.25}, 0.4)
+            tw(searchGlow, {ImageTransparency = 0.82}, 0.4)
+            tw(searchIcon, {ImageColor3 = Theme.g1}, 0.4)
+            tw(searchFrame, {BackgroundTransparency = 0.15}, 0.4)
+        end)
+        searchBox.FocusLost:Connect(function()
+            tw(underlineActive, {BackgroundTransparency = 0.999}, 0.4)
+            tw(searchStroke, {Transparency = 0.7}, 0.4)
+            tw(searchGlow, {ImageTransparency = 0.9}, 0.4)
+            tw(searchIcon, {ImageColor3 = Color3.fromRGB(110, 210, 255)}, 0.4)
+            tw(searchFrame, {BackgroundTransparency = 0.25}, 0.4)
+        end)
+
+        -- content
+        local content = mk("Frame", {
+            Name = "ContentFrame",
+            BackgroundTransparency = 1,
+            AnchorPoint = Vector2.new(0.5, 0),
+            Position = UDim2.new(0.5, 0, 0, 50),
+            Size = UDim2.new(1, 0, 1, -50),
+            Parent = page,
+        })
+        mk("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            Padding = UDim.new(0, 10),
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            VerticalAlignment = Enum.VerticalAlignment.Top,
+            HorizontalAlignment = Enum.HorizontalAlignment.Center,
+            Parent = content,
+        })
+
+        local columns = {}
+        local colWidth = 480 / numCols
+        local colNames = {"Single", "Left", "Center", "Right"}
+        for i = 1, numCols do
+            local name = numCols == 1 and "Single" or (numCols == 2 and (i == 1 and "Left" or "Right") or colNames[i])
+            local s = mk("ScrollingFrame", {
+                Name = name,
+                Active = true,
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+                Size = UDim2.new(0, colWidth, 1, 0),
+                CanvasSize = UDim2.new(0, 0, 0, 0),
+                AutomaticCanvasSize = Enum.AutomaticSize.Y,
+                ScrollBarThickness = 4,
+                ScrollBarImageColor3 = Color3.fromRGB(100, 100, 140),
+                ScrollBarImageTransparency = 0.5,
+                ClipsDescendants = true,
+                Parent = content,
+            })
+            mk("UIListLayout", {
+                Padding = UDim.new(0, 8),
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                HorizontalAlignment = Enum.HorizontalAlignment.Center,
+                Parent = s,
+            })
+            columns[name] = s
+        end
+
+        -- search debounce
+        local searchDebounce = 0
+        searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+            local q = searchBox.Text
+            if type(q) ~= "string" then return end
+            searchDebounce = searchDebounce + 1
+            local myDebounce = searchDebounce
+            task.delay(0.15, function()
+                if searchDebounce ~= myDebounce then return end
+                q = q:lower()
+                for _, col in pairs(columns) do
+                    for _, item in ipairs(col:GetChildren()) do
+                        if item:IsA("Frame") then
+                            if q == "" then
+                                item.Visible = true
+                            else
+                                local t = item:FindFirstChild("Title") or item:FindFirstChildOfClass("TextLabel")
+                                local txt = (t and t.Text or ""):lower()
+                                item.Visible = txt:find(q, 1, true) ~= nil
+                            end
+                        end
+                    end
+                end
+            end)
+        end)
+
+        -- tab click → drill down
+        tabClick.MouseButton1Click:Connect(function()
+            EffectClick(bg)
+            currentTabIdx = idx
+            tabBar.Visible = false
+            pagesContainer.Visible = true
+            for i, t in ipairs(tabs) do
+                t.page.Visible = (i == idx)
+            end
+            returnFrame.Visible = true
+            tw(returnFrame, {Position = UDim2.new(0.86, 0, 0.055, 0)}, 0.3, Enum.EasingStyle.Back)
+        end)
+
+        -- tab hover 5 tweens
+        tabClick.MouseEnter:Connect(function()
+            if currentTabIdx ~= idx then
+                tw(card, {BackgroundTransparency = 0.05}, 0.3)
+                tw(cardStroke, {Transparency = 0.35}, 0.3)
+                tw(hname, {TextStrokeTransparency = 0.1}, 0.3)
+                if banner then tw(banner, {Size = UDim2.new(1.05, 0, 1.05, 0)}, 0.3) end
+                if tabIcon then tw(tabIcon, {Size = UDim2.new(0, 36, 0, 36)}, 0.3) end
+            end
+        end)
+        tabClick.MouseLeave:Connect(function()
+            if currentTabIdx ~= idx then
+                tw(card, {BackgroundTransparency = 0.2}, 0.3)
+                tw(cardStroke, {Transparency = 0.75}, 0.3)
+                tw(hname, {TextStrokeTransparency = 0.3}, 0.3)
+                if banner then tw(banner, {Size = UDim2.new(1, 0, 1, 0)}, 0.3) end
+                if tabIcon then tw(tabIcon, {Size = UDim2.new(0, 32, 0, 32)}, 0.3) end
+            end
+        end)
+
+        tabs[idx] = {
+            card = card,
+            cardStroke = cardStroke,
+            page = page,
+            columns = columns,
+            numCols = numCols,
+            badge = badge,
+            badgeLabel = badgeLabel,
+            banner = banner,
+            hname = hname,
+        }
+        recomputeGrid()
+
+        -- tab object
+        local Tab = {Window = Window}
+        local counter = 0
+
+        -- get column
+        local function getCol(side)
+            if numCols == 1 then return columns["Single"] end
+            if numCols == 2 then
+                return side == "b" and columns["Right"] or columns["Left"]
+            end
+            local idx2 = (side == "b") and 2 or 1
+            local names = {}
+            for n in pairs(columns) do table.insert(names, n) end
+            table.sort(names)
+            return columns[names[math.clamp(idx2, 1, #names)]] or columns[names[1]]
+        end
+
+        -- new card with highlight + badge pop
+        local function newCard(side, h, name, noHighlight)
+            counter = counter + 1
+            local col = getCol(side)
+            local f = mk("Frame", {
+                Name = name or "Element",
+                BackgroundColor3 = Theme.cardInner,
+                BackgroundTransparency = 0.35,
+                Size = UDim2.new(0.97, 0, 0, h),
+                BorderSizePixel = 0,
+                ClipsDescendants = true,
+                LayoutOrder = counter,
+                Parent = col,
+            })
+            corner(f, 10)
+
+            if not noHighlight then
+                mk("Frame", {
+                    Name = "HighlightFrame",
+                    BackgroundColor3 = Theme.text,
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 1, 0),
+                    ZIndex = 2,
+                    BorderSizePixel = 0,
+                    Parent = f,
+                })
+                corner(f:GetChildren()[#f:GetChildren()], 10)
+            end
+
+            local cnt = #col:GetChildren()
+            badgeLabel.Text = tostring(cnt)
+            local newWidth = 32 + (cnt >= 10 and 4 or 0)
+            tw(badge, {Size = UDim2.new(0, newWidth, 0, 18)}, 0.3, Enum.EasingStyle.Back)
+
+            return f, col
+        end
+
+        -- wire highlight hover
+        local function wireHighlight(f)
+            local hf = f:FindFirstChild("HighlightFrame")
+            if not hf then return end
+            local btn = mk("TextButton", {
+                Name = "HoverZone", BackgroundTransparency = 1,
+                Text = "", Size = UDim2.new(1, 0, 1, 0), ZIndex = 1, Parent = f,
+            })
+            btn.MouseEnter:Connect(function() tw(hf, {BackgroundTransparency = 0.95}, 0.3) end)
+            btn.MouseLeave:Connect(function() tw(hf, {BackgroundTransparency = 1}, 0.3) end)
+        end
+
+        -- Label
+        function Tab:Label(c)
+            c = c or {}
+            local f = newCard(c.Side, 35, "Label")
+            local hasIcon = c.Icon ~= nil
+            local textX = hasIcon and 48 or 12
+
+            if hasIcon then
+                local iconFrame = lak(f, c.Icon, 24)
+                iconFrame.Position = UDim2.new(0, 8, 0.5, -12)
+            end
+
+            local lbl = mk("TextLabel", {
+                Name = "Title",
+                BackgroundTransparency = 1,
+                AnchorPoint = Vector2.new(0, 0.5),
+                Position = UDim2.new(0, textX, 0.5, 0),
+                Size = UDim2.new(1, -textX - 8, 0.8, 0),
+                Text = c.Title or "Label",
+                TextColor3 = Theme.text,
+                Font = Theme.fontBold,
+                TextSize = 14,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextScaled = true,
+                TextWrapped = true,
+                Parent = f,
+            })
+            wireHighlight(f)
+            return {
+                Frame = f,
+                SetText = function(self, t) lbl.Text = t end,
+                Visible = function(self, v) f.Visible = v end,
+            }
+        end
+
+        -- Paragraph
+        function Tab:Paragraph(c)
+            c = c or {}
+            local f = newCard(c.Side, 70, "Paragraph", true)
+            local cont = mk("Frame", {
+                Name = "Container",
+                BackgroundTransparency = 1,
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                Position = UDim2.new(0.5, 0, 0.5, 0),
+                Size = UDim2.new(1, 0, 1, 0),
+                Parent = f,
+            })
+            mk("UIListLayout", {
+                Padding = UDim.new(0, 3),
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                VerticalAlignment = Enum.VerticalAlignment.Center,
+                Parent = cont,
+            })
+            mk("UIPadding", {PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12), Parent = cont})
+
+            local titleLbl = mk("TextLabel", {
+                Name = "Title",
+                BackgroundTransparency = 1,
+                Size = UDim2.new(1, 0, 0, 18),
+                Text = c.Title or "Title",
+                TextColor3 = Theme.text,
+                Font = Theme.fontBold,
+                TextSize = 14,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextScaled = true,
+                TextWrapped = true,
+                Parent = cont,
+            })
+
+            local descLbl = mk("TextLabel", {
+                Name = "Desc",
+                BackgroundTransparency = 1,
+                Size = UDim2.new(1, 0, 0, 15),
+                Text = c.Desc or "",
+                TextColor3 = Theme.textDim,
+                TextTransparency = 0.3,
+                Font = Theme.fontReg,
+                TextSize = 12,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextYAlignment = Enum.TextYAlignment.Top,
+                TextWrapped = true,
+                Parent = cont,
+            })
+
+            task.spawn(function()
+                task.wait(0.05)
+                local width = f.AbsoluteSize.X - 24
+                if width <= 0 then width = 240 end
+                local h = calcTextHeight(descLbl.Text, 12, descLbl.Font, width)
+                local total = 18 + 3 + math.max(h, 15) + 16
+                f.Size = UDim2.new(0.97, 0, 0, math.max(total, 50))
+            end)
+
+            return {
+                Frame = f,
+                SetTitle = function(self, t) titleLbl.Text = t end,
+                SetDesc = function(self, d) descLbl.Text = d end,
+                Visible = function(self, v) f.Visible = v end,
+            }
+        end
+
+        -- Toggle
+        function Tab:Toggle(c)
+            c = c or {}
+            local f = newCard(c.Side, 55, "Toggle")
+            local statusType = c.StatusTextType or "OnOff"
+            local hasIcon = c.Icon ~= nil
+            local textX = hasIcon and 48 or 12
+
+            if hasIcon then
+                local iconFrame = lak(f, c.Icon, 24)
+                iconFrame.Position = UDim2.new(0, 8, 0.5, -12)
+            end
+
+            mk("TextLabel", {
+                Name = "Title",
+                BackgroundTransparency = 1,
+                AnchorPoint = Vector2.new(0, 0.5),
+                Position = UDim2.new(0, textX, 0.35, 0),
+                Size = UDim2.new(1, -textX - 90, 0, 18),
+                Text = c.Title or "Toggle",
+                TextColor3 = Theme.text,
+                Font = Theme.fontBold,
+                TextSize = 14,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextScaled = true,
+                TextWrapped = true,
+                Parent = f,
+            })
+
+            mk("TextLabel", {
+                Name = "Desc",
+                BackgroundTransparency = 1,
+                AnchorPoint = Vector2.new(0, 0.5),
+                Position = UDim2.new(0, textX, 0.68, 0),
+                Size = UDim2.new(1, -textX - 90, 0, 15),
+                Text = c.Desc or "",
+                TextColor3 = Theme.textDim,
+                TextTransparency = 0.3,
+                Font = Theme.fontReg,
+                TextSize = 11,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextScaled = true,
+                TextWrapped = true,
+                Parent = f,
+            })
+
+            local statusLbl = mk("TextLabel", {
+                Name = "StatusText",
+                BackgroundTransparency = 1,
+                AnchorPoint = Vector2.new(1, 0.5),
+                Position = UDim2.new(0.95, -38, 0.5, 0),
+                Size = UDim2.new(0, 60, 0, 20),
+                Text = (c.Value and (statusType == "TrueFalse" and "True" or "On"))
+                    or (statusType == "TrueFalse" and "False" or "Off"),
+                TextColor3 = c.Value and Theme.g1 or Theme.textDim,
+                Font = Theme.fontBold,
+                TextSize = 12,
+                TextXAlignment = Enum.TextXAlignment.Right,
+                Visible = c.ShowStatusText ~= false,
+                Parent = f,
+            })
+
+            local check = mk("Frame", {
+                Name = "Check",
+                BackgroundColor3 = Color3.fromRGB(30, 30, 35),
+                AnchorPoint = Vector2.new(1, 0.5),
+                Position = UDim2.new(0.95, 0, 0.5, 0),
+                Size = UDim2.new(0, 25, 0, 25),
+                ClipsDescendants = true,
+                BorderSizePixel = 0,
+                Parent = f,
+            })
+            corner(check, 5)
+
+            local colorFrame = mk("Frame", {
+                Name = "ColorFrame",
+                BackgroundColor3 = Theme.text,
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                Position = UDim2.new(0.5, 0, 0.5, 0),
+                Size = c.Value and UDim2.new(1, 0, 1, 0) or UDim2.new(0, 0, 0, 0),
+                BackgroundTransparency = c.Value and 0 or 1,
+                BorderSizePixel = 0,
+                Parent = check,
+            })
+            corner(colorFrame, 5)
+            gradient3(colorFrame, 0.482699, 48)
+
+            local value = c.Value or false
+            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), Parent = f})
+
+            local function refresh(animated)
+                if value then
+                    statusLbl.Text = (statusType == "TrueFalse") and "True" or "On"
+                    statusLbl.TextColor3 = Theme.g1
+                    if animated then
+                        colorFrame.BackgroundTransparency = 0
+                        tw(colorFrame, {Size = UDim2.new(1, 0, 1, 0)}, 0.3, Enum.EasingStyle.Back)
+                    else
+                        colorFrame.BackgroundTransparency = 0
+                        colorFrame.Size = UDim2.new(1, 0, 1, 0)
+                    end
+                else
+                    statusLbl.Text = (statusType == "TrueFalse") and "False" or "Off"
+                    statusLbl.TextColor3 = Theme.textDim
+                    if animated then
+                        tw(colorFrame, {Size = UDim2.new(0, 0, 0, 0)}, 0.3, Enum.EasingStyle.Back)
+                    else
+                        colorFrame.Size = UDim2.new(0, 0, 0, 0)
+                    end
+                end
+            end
+
+            btn.MouseButton1Click:Connect(function()
+                value = not value
+                EffectClick(bg)
+                refresh(true)
+                if c.Callback then
+                    task.spawn(function()
+                        local ok, err = pcall(c.Callback, value)
+                        if not ok then warn("[AuzuraLib] Toggle callback error:", err) end
+                    end)
+                end
+            end)
+            wireHighlight(f)
+
+            return {
+                Frame = f,
+                SetValue = function(self, v, silent)
+                    value = v and true or false
+                    refresh(false)
+                    if not silent and c.Callback then
+                        task.spawn(function() pcall(c.Callback, value) end)
+                    end
+                end,
+                GetValue = function(self) return value end,
+                ShowStatus = function(self, s) statusLbl.Visible = s end,
+                SetStatusTextType = function(self, t) statusType = t; refresh(false) end,
+                SetTitle = function(self, t) f.Title.Text = t end,
+                SetDesc = function(self, d) f.Desc.Text = d end,
+                Visible = function(self, v) f.Visible = v end,
+            }
+        end
+
+        -- Slider
+        function Tab:Slider(c)
+            c = c or {}
+            local f = newCard(c.Side, 65, "Slider")
+            local minV = c.Min or 0
+            local maxV = c.Max or 100
+            local rounding = c.Rounding or 0
+            local value = c.Value or minV
+            local function toPos(v) return (v - minV) / math.max(maxV - minV, 0.0001) end
+
+            mk("TextLabel", {
+                Name = "Title",
+                BackgroundTransparency = 1,
+                Position = UDim2.new(0.04, 0, 0, 8),
+                Size = UDim2.new(0.65, 0, 0, 18),
+                Text = c.Title or "Slider",
+                TextColor3 = Theme.text,
+                Font = Theme.fontBold,
+                TextSize = 14,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextScaled = true,
+                TextWrapped = true,
+                Parent = f,
+            })
+
+            local valFrame = mk("Frame", {
+                Name = "ValueDisplay",
+                BackgroundColor3 = Theme.text,
+                BackgroundTransparency = 0.9,
+                AnchorPoint = Vector2.new(1, 0),
+                Position = UDim2.new(0.96, 0, 0, 8),
+                Size = UDim2.new(0, 50, 0, 22),
+                Parent = f,
+            })
+            corner(valFrame, 6)
+            gradient3(valFrame, 0.482699)
+
+            local valText = mk("TextLabel", {
+                Name = "ValueText",
+                BackgroundTransparency = 1,
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                Position = UDim2.new(0.5, 0, 0.5, 0),
+                Size = UDim2.new(0.9, 0, 0.8, 0),
+                Text = string.format("%." .. rounding .. "f", value),
+                TextColor3 = Theme.text,
+                Font = Theme.fontBold,
+                TextSize = 12,
+                TextScaled = true,
+                Parent = valFrame,
+            })
+
+            local bar = mk("Frame", {
+                Name = "SliderBar",
+                BackgroundColor3 = Color3.fromRGB(40, 40, 45),
+                AnchorPoint = Vector2.new(0.5, 1),
+                Position = UDim2.new(0.5, 0, 1, -10),
+                Size = UDim2.new(0.92, 0, 0, 8),
+                Parent = f,
+            })
+            corner(bar, UDim.new(1, 0))
+
+            local fill = mk("Frame", {
+                Name = "BarFill",
+                BackgroundColor3 = Theme.text,
+                AnchorPoint = Vector2.new(0, 0.5),
+                Position = UDim2.new(0, 0, 0.5, 0),
+                Size = UDim2.new(toPos(value), 0, 1, 0),
+                BorderSizePixel = 0,
+                Parent = bar,
+            })
+            corner(fill, UDim.new(1, 0))
+            gradient3(fill, 0.482699)
+
+            local circle = mk("Frame", {
+                Name = "SliderCircle",
+                BackgroundColor3 = Theme.text,
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                Position = UDim2.new(toPos(value), 0, 0.5, 0),
+                Size = UDim2.new(0, 18, 0, 18),
+                Parent = bar,
+            })
+            corner(circle, UDim.new(1, 0))
+            gradient3(circle, 0.482699)
+
+            local dragging = false
+            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), Parent = f})
+
+            local function setFromPos(p)
+                p = math.clamp(p, 0, 1)
+                value = minV + p * (maxV - minV)
+                tw(fill, {Size = UDim2.new(p, 0, 1, 0)}, 0.1)
+                circle.Position = UDim2.new(p, 0, 0.5, 0)
+                valText.Text = string.format("%." .. rounding .. "f", value)
+                if c.Callback then
+                    task.spawn(function() pcall(c.Callback, value) end)
+                end
+            end
+
+            btn.InputBegan:Connect(function(i)
+                if i.UserInputType == Enum.UserInputType.MouseButton1 then
+                    dragging = true
+                    setFromPos((UIS:GetMouseLocation().X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X)
+                end
+            end)
+            btn.InputEnded:Connect(function(i)
+                if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+            end)
+            UIS.InputChanged:Connect(function(i)
+                if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
+                    setFromPos((UIS:GetMouseLocation().X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X)
+                end
+            end)
+            wireHighlight(f)
+
+            return {
+                Frame = f,
+                SetValue = function(self, v, silent)
+                    value = math.clamp(v, minV, maxV)
+                    local p = toPos(value)
+                    fill.Size = UDim2.new(p, 0, 1, 0)
+                    circle.Position = UDim2.new(p, 0, 0.5, 0)
+                    valText.Text = string.format("%." .. rounding .. "f", value)
+                    if not silent and c.Callback then
+                        task.spawn(function() pcall(c.Callback, value) end)
+                    end
+                end,
+                GetValue = function(self) return value end,
+                SetMin = function(self, v) minV = v end,
+                SetMax = function(self, v) maxV = v end,
+                SetTitle = function(self, t) f.Title.Text = t end,
+                SetDesc = function(self, d) end,
+                Visible = function(self, v) f.Visible = v end,
+            }
+        end
+
+        -- Button
+        function Tab:Button(c)
+            c = c or {}
+            local hasDesc = c.Desc ~= nil and c.Desc ~= ""
+            local f, btn, titleLbl, fire = click(getCol(c.Side), c.Title, c.Icon, c.Callback, hasDesc, c.Desc)
+            counter = counter + 1
+            f.LayoutOrder = counter
+            local col = getCol(c.Side)
+            f.Parent = col
+            wireHighlight(f)
+
+            local cnt = #col:GetChildren()
+            badgeLabel.Text = tostring(cnt)
+            tw(badge, {Size = UDim2.new(0, 32 + (cnt >= 10 and 4 or 0), 0, 18)}, 0.3, Enum.EasingStyle.Back)
+
+            if c.Icon then
+                local iconFrame = lak(f, c.Icon, 24)
+                iconFrame.Position = UDim2.new(0, 8, 0.5, -12)
+                titleLbl.Position = UDim2.new(0.5, 16, hasDesc and 0.35 or 0.5, 0)
+                titleLbl.Size = UDim2.new(0.85, -16, hasDesc and 0.4 or 0.8, 0)
+            end
+
+            return {
+                Frame = f,
+                Fire = function(self) fire() end,
+                UpdateTitle = function(self, t) titleLbl.Text = t end,
+                Visible = function(self, v) f.Visible = v end,
+            }
+        end
+
+        -- Dropdown
+        function Tab:Dropdown(c)
+            c = c or {}
+            local f = newCard(c.Side, 50, "Dropdown")
+            local multi = c.Multi or false
+            local selected = c.Value or (multi and {} or nil)
+            local items = {}
+            for i, v in ipairs(c.List or {}) do items[i] = v end
+
+            mk("TextLabel", {
+                Name = "Title",
+                BackgroundTransparency = 1,
+                Position = UDim2.new(0.04, 0, 0, 6),
+                Size = UDim2.new(0.75, 0, 0, 16),
+                Text = c.Title or "Dropdown",
+                TextColor3 = Theme.text,
+                Font = Theme.fontBold,
+                TextSize = 14,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextScaled = true,
+                TextWrapped = true,
+                Parent = f,
+            })
+
+            local valDisplay = mk("TextLabel", {
+                Name = "ValueDisplay",
+                BackgroundTransparency = 1,
+                Position = UDim2.new(0.04, 0, 0, 24),
+                Size = UDim2.new(0.85, 0, 0, 16),
+                Text = multi and table.concat(selected or {}, ", ") or tostring(selected or "Select"),
+                TextColor3 = Theme.text,
+                Font = Theme.fontBold,
+                TextSize = 12,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextScaled = true,
+                TextWrapped = true,
+                Parent = f,
+            })
+            gradient3(valDisplay, 0.482699, 90)
+
+            local arrow = mk("ImageLabel", {
+                Name = "ArrowIcon",
+                BackgroundTransparency = 1,
+                AnchorPoint = Vector2.new(1, 0.5),
+                Position = UDim2.new(0.96, 0, 0.5, 0),
+                Size = UDim2.new(0, 24, 0, 24),
+                Image = "rbxassetid://129573215183311",
+                ScaleType = Enum.ScaleType.Fit,
+                Parent = f,
+            })
+            gradient3(arrow, 0.482699)
+
+            local itemH = 32
+            local padEach = 4
+            local baseH = 78 + 8
+            local menuH = baseH + #items * (itemH + padEach) + 8
+
+            local menu = mk("Frame", {
+                Name = "DropdownMenu",
+                BackgroundColor3 = Theme.bg,
+                BackgroundTransparency = 0.05,
+                AnchorPoint = Vector2.new(1, 0.5),
+                Position = UDim2.new(1, 0, 0.5, 0),
+                Size = UDim2.new(0, 0, 0, menuH),
+                ClipsDescendants = true,
+                Visible = false,
+                ZIndex = 100,
+                Parent = bg,
+            })
+            corner(menu, 16)
+            stroke(menu, Color3.fromRGB(110, 110, 140), 2, 0.6)
+
+            mk("ImageLabel", {
+                Name = "Effect",
+                BackgroundTransparency = 1,
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                Position = UDim2.new(0.5, 0, 0.5, 0),
+                Size = UDim2.new(1, 0, 1, 0),
+                Image = "rbxassetid://132687652275989",
+                ImageColor3 = Theme.g1,
+                ImageTransparency = 0.5,
+                ScaleType = Enum.ScaleType.Crop,
+                ZIndex = 100,
+                Parent = menu,
+            })
+
+            local menuHeader = mk("Frame", {
+                Name = "Header",
+                BackgroundTransparency = 1,
+                Size = UDim2.new(1, 0, 0, 70),
+                ZIndex = 101,
+                Parent = menu,
+            })
+            mk("TextLabel", {
+                Name = "Title",
+                BackgroundTransparency = 1,
+                Position = UDim2.new(0, 16, 0, 12),
+                Size = UDim2.new(1, -32, 0, 24),
+                Text = c.Title or "Select",
+                TextColor3 = Theme.text,
+                Font = Theme.fontBold,
+                TextSize = 18,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                ZIndex = 101,
+                Parent = menuHeader,
+            })
+            local mLine = mk("Frame", {
+                Name = "Line",
+                BackgroundColor3 = Theme.text,
+                Position = UDim2.new(0, 16, 0, 42),
+                Size = UDim2.new(0, 60, 0, 2),
+                BorderSizePixel = 0,
+                ZIndex = 101,
+                Parent = menuHeader,
+            })
+            gradient3(mLine, 0.482699)
+
+            local menuSearch = mk("TextBox", {
+                Name = "SearchBox",
+                BackgroundColor3 = Theme.text,
+                BackgroundTransparency = 0.92,
+                AnchorPoint = Vector2.new(0.5, 1),
+                Position = UDim2.new(0.5, 0, 1, -4),
+                Size = UDim2.new(0.9, 0, 0, 28),
+                Font = Theme.fontBold,
+                PlaceholderColor3 = Color3.fromRGB(140, 140, 140),
+                PlaceholderText = "Search...",
+                TextColor3 = Theme.text,
+                TextSize = 12,
+                ClearTextOnFocus = false,
+                ZIndex = 102,
+                Parent = menuHeader,
+            })
+            corner(menuSearch, 8)
+            local msStk = stroke(menuSearch, Theme.text, 1.5, 0.7)
+            msStk.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            gradient3(msStk, 0.482699)
+
+            local menuScroll = mk("ScrollingFrame", {
+                Name = "MenuScroll",
+                Active = true,
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+                Position = UDim2.new(0, 8, 0, 78),
+                Size = UDim2.new(1, -16, 1, -86),
+                CanvasSize = UDim2.new(0, 0, 0, 0),
+                AutomaticCanvasSize = Enum.AutomaticSize.Y,
+                ScrollBarThickness = 4,
+                ScrollBarImageColor3 = Theme.g2,
+                ScrollBarImageTransparency = 0.7,
+                ClipsDescendants = true,
+                ZIndex = 101,
+                Parent = menu,
+            })
+            mk("UIListLayout", {
+                Padding = UDim.new(0, 4),
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                Parent = menuScroll,
+            })
+
+            local itemFrames = {}
+            local function isSelected(name)
+                if multi then
+                    for _, v in ipairs(selected) do if v == name then return true end end
+                    return false
+                end
+                return selected == name
+            end
+
+            local function renderValue()
+                if multi then
+                    valDisplay.Text = #selected > 0 and table.concat(selected, ", ") or "Select"
+                else
+                    valDisplay.Text = tostring(selected or "Select")
+                end
+            end
+
+            local function rebuildItems()
+                for _, item in ipairs(itemFrames) do item.frame:Destroy() end
+                itemFrames = {}
+                for i, name in ipairs(items) do
+                    local item = mk("Frame", {
+                        Name = "Item",
+                        BackgroundColor3 = Theme.card,
+                        BackgroundTransparency = 0.4,
+                        Size = UDim2.new(1, 0, 0, 32),
+                        BorderSizePixel = 0,
+                        LayoutOrder = i,
+                        ZIndex = 101,
+                        Parent = menuScroll,
+                    })
+                    corner(item, 6)
+
+                    mk("TextLabel", {
+                        Name = "ItemTitle",
+                        BackgroundTransparency = 1,
+                        Position = UDim2.new(0, 12, 0, 0),
+                        Size = UDim2.new(1, -44, 1, 0),
+                        Text = name,
+                        TextColor3 = Theme.text,
+                        Font = Theme.fontReg,
+                        TextSize = 12,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        ZIndex = 101,
+                        Parent = item,
+                    })
+
+                    local ind = mk("Frame", {
+                        Name = "Indicator",
+                        BackgroundColor3 = Theme.text,
+                        BackgroundTransparency = isSelected(name) and 0 or 1,
+                        Size = isSelected(name) and UDim2.new(0, 4, 1, 0) or UDim2.new(0, 0, 1, 0),
+                        BorderSizePixel = 0,
+                        ZIndex = 101,
+                        Parent = item,
+                    })
+                    corner(ind, 2)
+
+                    local clk = mk("TextButton", {
+                        Name = "Click",
+                        BackgroundTransparency = 1,
+                        Text = "",
+                        Size = UDim2.new(1, 0, 1, 0),
+                        ZIndex = 102,
+                        Parent = item,
+                    })
+                    table.insert(itemFrames, {frame = item, ind = ind, name = name})
+
+                    clk.MouseEnter:Connect(function() tw(item, {BackgroundTransparency = 0.2}, 0.15) end)
+                    clk.MouseLeave:Connect(function() tw(item, {BackgroundTransparency = 0.4}, 0.15) end)
+                    clk.MouseButton1Click:Connect(function()
+                        if multi then
+                            local found
+                            for k, v in ipairs(selected) do if v == name then found = k; break end end
+                            if found then table.remove(selected, found) else table.insert(selected, name) end
+                            local sel = isSelected(name)
+                            tw(ind, {
+                                BackgroundTransparency = sel and 0 or 1,
+                                Size = sel and UDim2.new(0, 4, 1, 0) or UDim2.new(0, 0, 1, 0),
+                            }, 0.3, Enum.EasingStyle.Back)
+                        else
+                            selected = name
+                            for _, it in ipairs(itemFrames) do
+                                local sel = it.name == name
+                                tw(it.ind, {
+                                    BackgroundTransparency = sel and 0 or 1,
+                                    Size = sel and UDim2.new(0, 4, 1, 0) or UDim2.new(0, 0, 1, 0),
+                                }, 0.3, Enum.EasingStyle.Back)
+                            end
+                        end
+                        renderValue()
+                        EffectClick(bg)
+                        if c.Callback then
+                            task.spawn(function() pcall(c.Callback, selected) end)
+                        end
+                    end)
+                end
+                local newH = baseH + #items * (itemH + padEach) + 8
+                menu.Size = UDim2.new(0, menu.AbsoluteSize.X, 0, newH)
+            end
+            rebuildItems()
+
+            menuSearch:GetPropertyChangedSignal("Text"):Connect(function()
+                local q = menuSearch.Text
+                if type(q) ~= "string" then return end
+                q = q:lower()
+                for _, it in ipairs(itemFrames) do
+                    it.frame.Visible = (q == "") or (it.name:lower():find(q, 1, true) ~= nil)
+                end
+            end)
+
+            -- close on outside
+            local isOpen = false
+            local closeConn = nil
+            local menuWidth = 240
+
+            local function closeMenu()
+                if not isOpen then return end
+                isOpen = false
+                tw(menu, {Size = UDim2.new(0, 0, 0, menuH)}, 0.3, Enum.EasingStyle.Back)
+                tw(menuSearch, {Size = UDim2.new(0, 0, 0, 28)}, 0.25, Enum.EasingStyle.Back)
+                tw(arrow, {Rotation = 0}, 0.3, Enum.EasingStyle.Back)
+                task.delay(0.3, function()
+                    if not isOpen then menu.Visible = false end
+                end)
+                if closeConn then closeConn:Disconnect(); closeConn = nil end
+            end
+
+            local clickBtn = mk("TextButton", {
+                Name = "ClickDropdown",
+                BackgroundTransparency = 1,
+                Text = "",
+                Size = UDim2.new(1, 0, 1, 0),
+                BorderSizePixel = 0,
+                AutoButtonColor = false,
+                ZIndex = 10,
+                Parent = f,
+            })
+
+            clickBtn.MouseButton1Click:Connect(function()
+                if isOpen then closeMenu(); return end
+                isOpen = true
+                menu.Visible = true
+                menuSearch.Text = ""
+                tw(menu, {Size = UDim2.new(0, menuWidth, 0, menuH)}, 0.3, Enum.EasingStyle.Back)
+                tw(menuSearch, {Size = UDim2.new(0.9, 0, 0, 28)}, 0.25, Enum.EasingStyle.Back)
+                tw(arrow, {Rotation = 180}, 0.3, Enum.EasingStyle.Back)
+
+                closeConn = UIS.InputBegan:Connect(function(input, gp)
+                    if gp then return end
+                    if input.UserInputType ~= Enum.UserInputType.MouseButton1
+                       and input.UserInputType ~= Enum.UserInputType.Touch then return end
+                    local m = UIS:GetMouseLocation()
+                    local mp, ms = menu.AbsolutePosition, menu.AbsoluteSize
+                    local fp, fs = f.AbsolutePosition, f.AbsoluteSize
+                    local inMenu = m.X >= mp.X and m.X <= mp.X + ms.X and m.Y >= mp.Y and m.Y <= mp.Y + ms.Y
+                    local inFrame = m.X >= fp.X and m.X <= fp.X + fs.X and m.Y >= fp.Y and m.Y <= fp.Y + fs.Y
+                    if not inMenu and not inFrame then closeMenu() end
+                end)
+            end)
+
+            f.Destroying:Connect(function()
+                if closeConn then closeConn:Disconnect() end
+            end)
+            wireHighlight(f)
+
+            return {
+                Frame = f,
+                SetValue = function(self, v, silent)
+                    selected = v
+                    renderValue()
+                    rebuildItems()
+                    if not silent and c.Callback then
+                        task.spawn(function() pcall(c.Callback, selected) end)
+                    end
+                end,
+                GetValue = function(self) return selected end,
+                SetList = function(self, l)
+                    items = {}
+                    for i, v in ipairs(l) do items[i] = v end
+                    rebuildItems()
+                end,
+                Add = function(self, name)
+                    table.insert(items, name)
+                    rebuildItems()
+                end,
+                Remove = function(self, name)
+                    for i, v in ipairs(items) do
+                        if v == name then table.remove(items, i); break end
+                    end
+                    rebuildItems()
+                end,
+                Clear = function(self) items = {}; rebuildItems() end,
+                Refresh = function(self) rebuildItems(); renderValue() end,
+                SetTitle = function(self, t)
+                    f.Title.Text = t
+                    menuHeader:FindFirstChildOfClass("TextLabel").Text = t
+                end,
+                SetDesc = function(self, d) end,
+                Visible = function(self, v) f.Visible = v end,
+            }
+        end
+
+        -- Textbox
+        function Tab:Textbox(c)
+            c = c or {}
+            local f = newCard(c.Side, 85, "Textbox")
+            local value = c.Value or ""
+
+            mk("TextLabel", {
+                Name = "Title",
+                BackgroundTransparency = 1,
+                Position = UDim2.new(0.04, 0, 0, 8),
+                Size = UDim2.new(0.92, 0, 0, 18),
+                Text = c.Title or "Textbox",
+                TextColor3 = Theme.text,
+                Font = Theme.fontBold,
+                TextSize = 14,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextScaled = true,
+                TextWrapped = true,
+                Parent = f,
+            })
+
+            mk("TextLabel", {
+                Name = "Desc",
+                BackgroundTransparency = 1,
+                Position = UDim2.new(0.04, 0, 0, 28),
+                Size = UDim2.new(0.92, 0, 0, 14),
+                Text = c.Desc or "",
+                TextColor3 = Theme.textDim,
+                TextTransparency = 0.4,
+                Font = Theme.fontReg,
+                TextSize = 11,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextScaled = true,
+                TextWrapped = true,
+                Parent = f,
+            })
+
+            local inputFrame = mk("Frame", {
+                Name = "InputFrame",
+                BackgroundColor3 = Theme.text,
+                BackgroundTransparency = 0.92,
+                AnchorPoint = Vector2.new(0.5, 1),
+                Position = UDim2.new(0.5, 0, 1, -8),
+                Size = UDim2.new(0.92, 0, 0, 32),
+                Parent = f,
+            })
+            corner(inputFrame, 8)
+            local iStk = stroke(inputFrame, Theme.text, 1.5, 0.7)
+            iStk.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            gradient3(iStk, 0.482699)
+
+            local glow = mk("ImageLabel", {
+                Name = "FocusGlow",
+                BackgroundTransparency = 1,
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                Position = UDim2.new(0.5, 0, 0.5, 0),
+                Size = UDim2.new(1, 40, 1, 40),
+                Image = "rbxassetid://8992230677",
+                ImageColor3 = Theme.g2,
+                ImageTransparency = 1,
+                ScaleType = Enum.ScaleType.Slice,
+                SliceCenter = Rect.new(99, 99, 99, 99),
+                ZIndex = 0,
+                Parent = inputFrame,
+            })
+
+            local tb = mk("TextBox", {
+                Name = "Edit",
+                Active = true,
+                BackgroundTransparency = 1,
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                Position = UDim2.new(0.5, 0, 0.5, 0),
+                Size = UDim2.new(0.92, 0, 0.8, 0),
+                Font = Theme.fontBold,
+                PlaceholderColor3 = Color3.fromRGB(140, 140, 140),
+                PlaceholderText = c.PlaceHolder or "Enter text here...",
+                Text = value,
+                TextColor3 = Theme.text,
+                TextSize = 13,
+                ClearTextOnFocus = c.ClearOnFocus ~= false,
+                TextScaled = true,
+                Parent = inputFrame,
+            })
+
+            tb.Focused:Connect(function()
+                tw(iStk, {Transparency = 0.2}, 0.3)
+                tw(inputFrame, {BackgroundTransparency = 0.85}, 0.3)
+                tw(glow, {ImageTransparency = 0.85}, 0.3)
+            end)
+            tb.FocusLost:Connect(function()
+                value = tb.Text
+                tw(iStk, {Transparency = 0.7}, 0.3)
+                tw(inputFrame, {BackgroundTransparency = 0.92}, 0.3)
+                tw(glow, {ImageTransparency = 1}, 0.3)
+                if c.Callback then
+                    task.spawn(function() pcall(c.Callback, value) end)
+                end
+            end)
+            wireHighlight(f)
+
+            return {
+                Frame = f,
+                SetValue = function(self, v) value = v; tb.Text = v end,
+                GetValue = function(self) return tb.Text end,
+                SetTitle = function(self, t) f.Title.Text = t end,
+                SetDesc = function(self, d) f.Desc.Text = d end,
+                Visible = function(self, v) f.Visible = v end,
+            }
+        end
+
+        -- Keybind
+        function Tab:Keybind(c)
+            c = c or {}
+            local f = newCard(c.Side, 55, "Keybind")
+            f.BackgroundTransparency = 0.2
+            local currentKey = c.Key or Enum.KeyCode.Q
+            local currentMode = c.Mode or "Toggle"
+            local value = c.Value or false
+
+            mk("TextLabel", {
+                Name = "Title",
+                BackgroundTransparency = 1,
+                Position = UDim2.new(0.04, 0, 0, 10),
+                Size = UDim2.new(0.5, 0, 0, 18),
+                Text = c.Title or "Keybind",
+                TextColor3 = Theme.text,
+                Font = Theme.fontBold,
+                TextSize = 14,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextScaled = true,
+                TextWrapped = true,
+                Parent = f,
+            })
+
+            mk("TextLabel", {
+                Name = "Desc",
+                BackgroundTransparency = 1,
+                AnchorPoint = Vector2.new(0, 0.5),
+                Position = UDim2.new(0.04, 0, 0.68, 0),
+                Size = UDim2.new(0.5, 0, 0, 15),
+                Text = c.Desc or "",
+                TextColor3 = Theme.textDim,
+                TextTransparency = 0.3,
+                Font = Theme.fontReg,
+                TextSize = 11,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextScaled = true,
+                TextWrapped = true,
+                Parent = f,
+            })
+
+            local keyDisplay = mk("Frame", {
+                Name = "KeyDisplay",
+                BackgroundColor3 = Theme.text,
+                BackgroundTransparency = 0.85,
+                AnchorPoint = Vector2.new(1, 0),
+                Position = UDim2.new(0.96, 0, 0, 8),
+                Size = UDim2.new(0, 45, 0, 28),
+                Parent = f,
+            })
+            corner(keyDisplay, 8)
+            gradient3(keyDisplay, 0.482699, 45)
+
+            mk("ImageLabel", {
+                Name = "KeyIcon",
+                BackgroundTransparency = 1,
+                AnchorPoint = Vector2.new(0, 0.5),
+                Position = UDim2.new(0.08, 0, 0.5, 0),
+                Size = UDim2.new(0, 14, 0, 14),
+                Image = "rbxassetid://10723407389",
+                ImageColor3 = Theme.text,
+                Parent = keyDisplay,
+            })
+
+            local keyText = mk("TextLabel", {
+                Name = "KeyText",
+                BackgroundTransparency = 1,
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                Position = UDim2.new(0.6, 0, 0.5, 0),
+                Size = UDim2.new(0.65, 0, 0.7, 0),
+                Text = currentKey.Name,
+                TextColor3 = Theme.text,
+                Font = Theme.fontBold,
+                TextSize = 13,
+                TextScaled = true,
+                Parent = keyDisplay,
+            })
+
+            local modeBtn = mk("TextButton", {
+                Name = "ModeButton",
+                BackgroundColor3 = Color3.fromRGB(30, 30, 35),
+                BackgroundTransparency = 0.3,
+                AnchorPoint = Vector2.new(1, 0),
+                Position = UDim2.new(0.96, 0, 0, 40),
+                Size = UDim2.new(0, 70, 0, 20),
+                Text = "",
+                AutoButtonColor = false,
+                Parent = f,
+            })
+            corner(modeBtn, 6)
+            local modeText = mk("TextLabel", {
+                Name = "ModeText",
+                BackgroundTransparency = 1,
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                Position = UDim2.new(0.5, 0, 0.5, 0),
+                Size = UDim2.new(0.9, 0, 0.8, 0),
+                Text = currentMode,
+                TextColor3 = Color3.fromRGB(200, 200, 220),
+                Font = Theme.fontBold,
+                TextSize = 10,
+                TextScaled = true,
+                Parent = modeBtn,
+            })
+
+            modeBtn.MouseButton1Click:Connect(function()
+                currentMode = (currentMode == "Toggle") and "Hold" or "Toggle"
+                modeText.Text = currentMode
+                tw(modeBtn, {BackgroundTransparency = 0.1}, 0.2, Enum.EasingStyle.Back)
+                task.wait(0.1)
+                tw(modeBtn, {BackgroundTransparency = 0.3}, 0.2, Enum.EasingStyle.Back)
+                EffectClick(bg)
+            end)
+            modeBtn.MouseEnter:Connect(function() tw(modeBtn, {BackgroundTransparency = 0.2}, 0.15) end)
+            modeBtn.MouseLeave:Connect(function() tw(modeBtn, {BackgroundTransparency = 0.3}, 0.15) end)
+
+            local listening = false
+            local clickBtn = mk("TextButton", {
+                Name = "Click", BackgroundTransparency = 1, Text = "",
+                Size = UDim2.new(1, 0, 1, 0), Parent = f,
+            })
+
+            local function updateWidth(txt)
+                local ok, ts = pcall(function()
+                    return TextService:GetTextSize(txt, 13, keyText.Font, Vector2.new(1000, 1000))
+                end)
+                if ok and ts then
+                    local w = math.clamp(ts.X + 24, 40, 60)
+                    keyDisplay.Size = UDim2.new(0, w, 0, 28)
+                end
+            end
+
+            clickBtn.MouseButton1Click:Connect(function()
+                EffectClick(bg)
+                listening = true
+                keyText.Text = "..."
+                task.wait(0.05)
+                updateWidth("...")
+            end)
+
+            local connBegan, connEnded
+            connBegan = UIS.InputBegan:Connect(function(input, gp)
+                if listening then
+                    if input.UserInputType == Enum.UserInputType.Keyboard then
+                        currentKey = input.KeyCode
+                        keyText.Text = currentKey.Name
+                        listening = false
+                        updateWidth(currentKey.Name)
+                    end
+                    return
+                end
+                if not gp and input.KeyCode == currentKey then
+                    if currentMode == "Toggle" then
+                        value = not value
+                        if c.Callback then
+                            task.spawn(function() pcall(c.Callback, currentKey, value, currentMode) end)
+                        end
+                    else
+                        value = true
+                        if c.Callback then
+                            task.spawn(function() pcall(c.Callback, currentKey, true, currentMode) end)
+                        end
+                    end
+                end
+            end)
+            connEnded = UIS.InputEnded:Connect(function(input)
+                if input.KeyCode == currentKey and currentMode == "Hold" then
+                    value = false
+                    if c.Callback then
+                        task.spawn(function() pcall(c.Callback, currentKey, false, currentMode) end)
+                    end
+                end
+            end)
+            f.Destroying:Connect(function()
+                if connBegan then connBegan:Disconnect() end
+                if connEnded then connEnded:Disconnect() end
+            end)
+            wireHighlight(f)
+
+            return {
+                Frame = f,
+                SetKey = function(self, k) currentKey = k; keyText.Text = k.Name; updateWidth(k.Name) end,
+                GetKey = function(self) return currentKey end,
+                SetMode = function(self, m) currentMode = m; modeText.Text = m end,
+                GetMode = function(self) return currentMode end,
+                SetValue = function(self, v) value = v end,
+                GetValue = function(self) return value end,
+                SetTitle = function(self, t) f.Title.Text = t end,
+                SetDesc = function(self, d) f.Desc.Text = d end,
+                Visible = function(self, v) f.Visible = v end,
+            }
+        end
+
+        -- Discord
+        function Tab:Discord(c)
+            c = c or {}
+            local f = newCard(c.Side, 65, "Discord", true)
+            f.BackgroundColor3 = Theme.discord
+            f.BackgroundTransparency = 0
+
+            mk("TextLabel", {
+                BackgroundTransparency = 1,
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                Position = UDim2.new(0.5, 0, 0.5, 0),
+                Size = UDim2.new(0.95, 0, 0.8, 0),
+                Text = "Join Discord",
+                TextColor3 = Theme.text,
+                Font = Theme.fontBold,
+                TextSize = 14,
+                TextScaled = true,
+                TextWrapped = true,
+                Parent = f,
+            })
+
+            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), Parent = f})
+            btn.MouseEnter:Connect(function() tw(f, {BackgroundTransparency = 0.4}, 0.3) end)
+            btn.MouseLeave:Connect(function() tw(f, {BackgroundTransparency = 0}, 0.3) end)
+            btn.MouseButton1Click:Connect(function()
+                EffectClick(bg)
+                if setclipboard and c.Link then
+                    pcall(setclipboard, c.Link)
+                end
+            end)
+            return {Frame = f, Visible = function(self, v) f.Visible = v end}
+        end
+
+        -- ThumnailsImage
+        function Tab:ThumnailsImage(c)
+            c = c or {}
+            local h = c.SizeY or 100
+            local f = newCard(c.Side, h, "ImageFrame", true)
+            local img = nil
+            if c.Banner then
+                img = mk("ImageLabel", {
+                    Name = "Preview",
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 1, 0),
+                    Image = "rbxassetid://" .. tostring(c.Banner),
+                    ImageTransparency = 0.15,
+                    ScaleType = Enum.ScaleType.Crop,
+                    Parent = f,
+                })
+            end
+            local titleLbl = nil
+            if c.ShowTitle and c.Title then
+                titleLbl = mk("TextLabel", {
+                    Name = "ImageTitle",
+                    BackgroundTransparency = 1,
+                    AnchorPoint = Vector2.new(0.5, 0.5),
+                    Position = UDim2.new(0.5, 0, 0.5, 0),
+                    Size = UDim2.new(0.9, 0, 0.5, 0),
+                    Text = c.Title,
+                    TextColor3 = Theme.text,
+                    Font = Theme.fontBold,
+                    TextSize = 14,
+                    TextScaled = true,
+                    TextStrokeTransparency = 0.5,
+                    Parent = f,
+                })
+            end
+
+            local fullscreenFrame = mk("Frame", {
+                Name = "FullscreenView",
+                BackgroundColor3 = Color3.new(0, 0, 0),
+                BackgroundTransparency = 1,
+                Size = UDim2.new(1, 0, 1, 0),
+                Visible = false,
+                ZIndex = 200,
+                Parent = gui,
+            })
+
+            local fullImg = nil
+            if c.Banner then
+                fullImg = mk("ImageLabel", {
+                    BackgroundTransparency = 1,
+                    AnchorPoint = Vector2.new(0.5, 0.5),
+                    Position = UDim2.new(0.5, 0, 0.5, 0),
+                    Size = UDim2.new(0, 0, 0, 0),
+                    Image = "rbxassetid://" .. tostring(c.Banner),
+                    ScaleType = Enum.ScaleType.Fit,
+                    ZIndex = 201,
+                    Parent = fullscreenFrame,
+                })
+            end
+
+            local closeBtn = mk("TextButton", {
+                BackgroundColor3 = Theme.bg,
+                BackgroundTransparency = 0.1,
+                Position = UDim2.new(1, -60, 0, 20),
+                Size = UDim2.new(0, 40, 0, 40),
+                Text = "X",
+                TextColor3 = Theme.text,
+                Font = Theme.fontBold,
+                TextSize = 20,
+                ZIndex = 202,
+                Parent = fullscreenFrame,
+            })
+            corner(closeBtn, 8)
+            stroke(closeBtn, Theme.border, 1, 0)
+
+            local isFullscreen = false
+            local function openFullscreen()
+                if isFullscreen then return end
+                isFullscreen = true
+                fullscreenFrame.Visible = true
+                tw(fullscreenFrame, {BackgroundTransparency = 0.3}, 0.3)
+                if fullImg then
+                    tw(fullImg, {Size = UDim2.new(0.8, 0, 0.8, 0)}, 0.3, Enum.EasingStyle.Back)
+                end
+            end
+            local function closeFullscreen()
+                if not isFullscreen then return end
+                isFullscreen = false
+                tw(fullscreenFrame, {BackgroundTransparency = 1}, 0.3)
+                if fullImg then
+                    tw(fullImg, {Size = UDim2.new(0, 0, 0, 0)}, 0.3, Enum.EasingStyle.Back)
+                end
+                task.delay(0.3, function()
+                    if not isFullscreen then fullscreenFrame.Visible = false end
+                end)
+            end
+
+            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), Parent = f})
+            btn.MouseButton1Click:Connect(function()
+                EffectClick(bg)
+                openFullscreen()
+            end)
+            closeBtn.MouseButton1Click:Connect(function()
+                EffectClick(gui)
+                closeFullscreen()
+            end)
+
+            return {
+                Frame = f,
+                SetImage = function(self, id)
+                    if img then img.Image = "rbxassetid://" .. tostring(id) end
+                    if fullImg then fullImg.Image = "rbxassetid://" .. tostring(id) end
+                end,
+                SetTitle = function(self, t) if titleLbl then titleLbl.Text = t end end,
+                SetHeight = function(self, h2)
+                    tw(f, {Size = UDim2.new(0.97, 0, 0, h2)}, 0.3)
+                end,
+                Visible = function(self, v) f.Visible = v end,
+            }
+        end
+
+        return Tab
+    end
+
+    return Window
+end
+
+return AuzuraLib
