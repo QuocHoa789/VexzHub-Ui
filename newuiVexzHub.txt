@@ -49,14 +49,9 @@ local function mk(class, props, parent)
     return o
 end
 
--- corner (ĐÃ FIX LỖI UDIM)
+-- corner
 local function corner(p, r)
-    if type(r) == "number" then
-        r = UDim.new(0, r)
-    elseif not r then
-        r = UDim.new(0, 8)
-    end
-    return mk("UICorner", {CornerRadius = r}, p)
+    return mk("UICorner", {CornerRadius = r or UDim.new(0, 8)}, p)
 end
 
 -- stroke
@@ -300,8 +295,7 @@ local function click(parent, text, icon, callback, hasDesc, desc)
     end
 
     local s = stroke(f, Theme.text, 2, 0.65)
-    -- FIX ZINDEX
-    local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), ZIndex = 5, Parent = f})
+    local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), Parent = f})
 
     btn.MouseEnter:Connect(function()
         tw(f, {BackgroundTransparency = 0.4}, 0.3)
@@ -1200,7 +1194,7 @@ function AuzuraLib:Window(cfg)
                     BackgroundColor3 = Theme.text,
                     BackgroundTransparency = 1,
                     Size = UDim2.new(1, 0, 1, 0),
-                    ZIndex = 1, -- FIX ZINDEX (Giảm để không chặn click)
+                    ZIndex = 2,
                     BorderSizePixel = 0,
                     Parent = f,
                 })
@@ -1223,7 +1217,7 @@ function AuzuraLib:Window(cfg)
                 BackgroundTransparency = 1,
                 Text = "",
                 Size = UDim2.new(1, 0, 1, 0),
-                ZIndex = 2, -- FIX ZINDEX (Tăng để nhận hover, nhưng thấp hơn nút bấm)
+                ZIndex = 1,
                 Parent = f,
             })
             btn.MouseEnter:Connect(function() tw(hf, {BackgroundTransparency = 0.95}, 0.3) end)
@@ -1421,8 +1415,7 @@ function AuzuraLib:Window(cfg)
             gradient3(colorFrame, 0.482699, 48)
 
             local value = c.Value or false
-            -- FIX ZINDEX
-            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), ZIndex = 5, Parent = f})
+            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), Parent = f})
 
             local function refresh(animated)
                 if value then
@@ -1562,8 +1555,7 @@ function AuzuraLib:Window(cfg)
             gradient3(circle, 0.482699)
 
             local dragging = false
-            -- FIX ZINDEX
-            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), ZIndex = 5, Parent = f})
+            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), Parent = f})
 
             local function setFromPos(p)
                 p = math.clamp(p, 0, 1)
@@ -1704,7 +1696,6 @@ function AuzuraLib:Window(cfg)
             local padEach = 4
             local baseH = 78 + 8
             local menuH = baseH + math.max(#items, 1) * (itemH + padEach) + 8
-            local menuWidth = 240 -- FIX: Chuyển lên đây
 
             local menu = mk("Frame", {
                 Name = "DropdownMenu",
@@ -1907,7 +1898,7 @@ function AuzuraLib:Window(cfg)
                     end)
                 end
                 local newH = baseH + math.max(#items, 1) * (itemH + padEach) + 8
-                menu.Size = UDim2.new(0, menuWidth, 0, newH) -- FIX: Dùng menuWidth thay vì AbsoluteSize.X
+                menu.Size = UDim2.new(0, menu.AbsoluteSize.X, 0, newH)
             end
             rebuildItems()
 
@@ -1922,6 +1913,7 @@ function AuzuraLib:Window(cfg)
 
             local isOpen = false
             local closeConn = nil
+            local menuWidth = 240
 
             local function closeMenu()
                 if not isOpen then return end
@@ -1935,7 +1927,6 @@ function AuzuraLib:Window(cfg)
                 if closeConn then closeConn:Disconnect(); closeConn = nil end
             end
 
-            -- FIX ZINDEX
             local clickBtn = mk("TextButton", {
                 Name = "ClickDropdown",
                 BackgroundTransparency = 1,
@@ -1943,7 +1934,7 @@ function AuzuraLib:Window(cfg)
                 Size = UDim2.new(1, 0, 1, 0),
                 BorderSizePixel = 0,
                 AutoButtonColor = false,
-                ZIndex = 5,
+                ZIndex = 10,
                 Parent = f,
             })
 
@@ -2077,7 +2068,6 @@ function AuzuraLib:Window(cfg)
                 Parent = inputFrame,
             })
 
-            -- FIX ZINDEX
             local tb = mk("TextBox", {
                 Name = "Edit",
                 Active = true,
@@ -2093,7 +2083,6 @@ function AuzuraLib:Window(cfg)
                 TextSize = 13,
                 ClearTextOnFocus = c.ClearOnFocus ~= false,
                 TextScaled = true,
-                ZIndex = 5,
                 Parent = inputFrame,
             })
 
@@ -2201,7 +2190,6 @@ function AuzuraLib:Window(cfg)
                 Parent = keyDisplay,
             })
 
-            -- FIX ZINDEX
             local modeBtn = mk("TextButton", {
                 Name = "ModeButton",
                 BackgroundColor3 = Color3.fromRGB(30, 30, 35),
@@ -2211,7 +2199,6 @@ function AuzuraLib:Window(cfg)
                 Size = UDim2.new(0, 70, 0, 20),
                 Text = "",
                 AutoButtonColor = false,
-                ZIndex = 5,
                 Parent = f,
             })
             corner(modeBtn, 6)
@@ -2241,13 +2228,11 @@ function AuzuraLib:Window(cfg)
             modeBtn.MouseLeave:Connect(function() tw(modeBtn, {BackgroundTransparency = 0.3}, 0.15) end)
 
             local listening = false
-            -- FIX ZINDEX
             local clickBtn = mk("TextButton", {
                 Name = "Click",
                 BackgroundTransparency = 1,
                 Text = "",
                 Size = UDim2.new(1, 0, 1, 0),
-                ZIndex = 5,
                 Parent = f,
             })
 
@@ -2342,8 +2327,7 @@ function AuzuraLib:Window(cfg)
                 Parent = f,
             })
 
-            -- FIX ZINDEX
-            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), ZIndex = 5, Parent = f})
+            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), Parent = f})
             btn.MouseEnter:Connect(function() tw(f, {BackgroundTransparency = 0.4}, 0.3) end)
             btn.MouseLeave:Connect(function() tw(f, {BackgroundTransparency = 0}, 0.3) end)
             btn.MouseButton1Click:Connect(function()
@@ -2451,8 +2435,7 @@ function AuzuraLib:Window(cfg)
                 end)
             end
 
-            -- FIX ZINDEX
-            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), ZIndex = 5, Parent = f})
+            local btn = mk("TextButton", {BackgroundTransparency = 1, Text = "", Size = UDim2.new(1, 0, 1, 0), Parent = f})
             btn.MouseButton1Click:Connect(function()
                 EffectClick(bg)
                 openFullscreen()
