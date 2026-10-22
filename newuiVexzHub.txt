@@ -46,9 +46,14 @@ local function mk(class, props, parent)
     return o
 end
 
--- corner helper
+-- corner helper (ĐÃ FIX)
 local function corner(p, r)
-    return mk("UICorner", {CornerRadius = r or UDim.new(0, 8)}, p)
+    if type(r) == "number" then
+        r = UDim.new(0, r)
+    elseif not r then
+        r = UDim.new(0, 8)
+    end
+    return mk("UICorner", {CornerRadius = r}, p)
 end
 
 -- stroke helper
@@ -786,7 +791,7 @@ function AuzuraLib:Window(cfg)
             Position = UDim2.new(1, -8, 0, 8),
             Size = UDim2.new(0, 32, 0, 18),
             ZIndex = 6,
-            BorderPixelSize = 0,
+            BorderSizePixel = 0, -- Fixed typo from BorderPixelSize
             Parent = card,
         })
         corner(badge, UDim.new(1, 0))
@@ -1621,6 +1626,7 @@ function AuzuraLib:Window(cfg)
             local padEach = 4
             local baseH = 78 + 8
             local menuH = baseH + #items * (itemH + padEach) + 8
+            local menuWidth = 240
 
             local menu = mk("Frame", {
                 Name = "DropdownMenu",
@@ -1823,7 +1829,7 @@ function AuzuraLib:Window(cfg)
                     end)
                 end
                 local newH = baseH + #items * (itemH + padEach) + 8
-                menu.Size = UDim2.new(0, menu.AbsoluteSize.X, 0, newH)
+                menu.Size = UDim2.new(0, menuWidth, 0, newH) -- Fixed: sử dụng menuWidth thay vì AbsoluteSize.X
             end
             rebuildItems()
 
@@ -1839,7 +1845,6 @@ function AuzuraLib:Window(cfg)
             -- close on outside
             local isOpen = false
             local closeConn = nil
-            local menuWidth = 240
 
             local function closeMenu()
                 if not isOpen then return end
